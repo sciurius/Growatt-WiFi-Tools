@@ -1,0 +1,30 @@
+1. Install Perl if necessary, add module Data::Hexify .
+
+NOTE: You may need to adjust paths to scripts and files, depending on
+your installation.
+
+2. Start proxy server (see also scripts/run_proxy.sh):
+
+   perl growatt_proxy.pl --debug
+
+   make sure it keeps running!
+
+3. In the Growatt WiFi module, set the server to the system running
+   the proxy server. A reboot of the module is necessary.
+
+4. In the directory where the proxy server is running small data files
+   will be created:
+
+	   20150702163939.dat
+
+   You can read these with
+
+   perl growatt_data.pl 20150702163939.dat
+
+5. If you have a collection of data files, for example the data for
+   one day, you can generate a chart using
+
+   perl growatt_data.pl --plot 20150702*.dat > current_plot.data
+   gnuplot --persist growatt_data.plot
+
+Feedback welcome.
