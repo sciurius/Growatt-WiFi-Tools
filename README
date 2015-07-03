@@ -24,10 +24,16 @@ your installation.
 
    perl growatt_data.pl 20150702163939.dat
 
+   This script assumes your version of the Growatt WiFi module is
+   2.0.0.0 or higher. If you have a 1.0.0.0 module, pass the
+   --version=1 command line option to the script.
+
 5. If you have a collection of data files, for example the data for
    one day, you can generate a chart using
 
    perl growatt_data.pl --plot 20150702*.dat > current_plot.data
    gnuplot --persist growatt_data.plot
+
+WARNING: Use at your own risk.
 
 Feedback welcome.
