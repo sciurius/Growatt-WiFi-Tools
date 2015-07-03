@@ -1,3 +1,6 @@
+This is a set of tools to play with the Growatt WiFi data collection
+module.
+
 1. Install Perl if necessary, add module Data::Hexify .
 
 NOTE: You may need to adjust paths to scripts and files, depending on
