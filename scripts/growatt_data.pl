@@ -3,18 +3,19 @@
 # Author          : Johan Vromans
 # Created On      : Thu Jul  2 14:37:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Fri Jul  3 21:43:09 2015
-# Update Count    : 102
+# Last Modified On: Sat Jul  4 22:11:24 2015
+# Update Count    : 133
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
 
 use strict;
+use warnings;
 
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_data 0.01 );
+my ($my_name, $my_version) = qw( growatt_data 0.02 );
 
 ################ Command line parameters ################
 
@@ -23,7 +24,7 @@ use Getopt::Long 2.13;
 # Command line options.
 my $gwversion = 3;		# Growatt WiFi module version
 my $print = 1;			# default: print report
-my $plot = 0;			# generate gnuplot data
+my $export = 0;			# generate CSV
 my $verbose = 0;		# verbose processing
 
 # Development options (not shown with -help).
@@ -38,6 +39,17 @@ app_options();
 $trace |= ($debug || $test);
 
 ################ Presets ################
+
+my @fields = qw( SampleDate SampleTime
+		 DataLoggerId InverterId InvStat InvStattxt
+		 Ppv Vpv1 Ipv1 Ppv1 Vpv2 Ipv2 Ppv2
+		 Pac Fac Vac1 Iac1 Pac1 Vac2 Iac2 Pac2 Vac3 Iac3 Pac3
+		 E_Today E_Total
+		 Tall Tmp ISOF GFCIF DCIF
+		 Vpvfault Vacfault Facfault Tmpfault Faultcode
+		 IPMtemp Pbusvolt Nbusvolt
+		 Epv1today Epv1total Epv2today Epv2total Epvtotal
+		 Rac ERactoday ERactotal );
 
 my $TMPDIR = $ENV{TMPDIR} || $ENV{TEMP} || '/usr/tmp';
 
@@ -103,8 +115,8 @@ sub process_file {
     $a->{SampleTime} = $sample_time;
 
     # Print (for now).
-    print_data($a) if $print;
-    plot_data($a)  if $plot;
+    print_data($a)  if $print;
+    export_data($a) if $export;
 }
 
 use Data::Hexify;
@@ -176,7 +188,7 @@ sub disassemble {
     $a{Vacfault} = $up->(2, 1);
     $a{Facfault} = sprintf("%.2f", up($data, $off, 2)/100 ); $off += 2;
     $a{Tmpfault} = $up->(2, 1);
-    $a{Faultcode} = sprintf("0x%02X", $up->(2));
+    $a{Faultcode} = $up->(2);
     $a{IPMtemp} = $up->(2, 1);
     $a{Pbusvolt} = $up->(2, 1);
     $a{Nbusvolt} = $up->(2, 1);
@@ -198,12 +210,38 @@ sub disassemble {
     return \%a;
 }
 
-sub plot_data {
+use Text::CSV;
+use IO::Wrap;
+my $csv;
+
+# The amount of enery per day resets when the inverter thinks the day
+# has changes. Keep track of the values.
+my $E_Today;
+my $E_Today_Base;
+
+sub export_data {
     my ( $a ) = @_;
     my %a = %$a;
-    printf( "\"%s %s\" %.1f %.1f %.1f %.1f\n",
-	    $a{SampleDate}, $a{SampleTime},
-	    $a{Ppv}, $a{Ipv1}, $a{Ipv2}, $a{Tmp} );
+
+    my $status;
+    unless ( $csv ) {
+	$csv = Text::CSV->new( { binary => 1 } );
+	my $status = $csv->combine(@fields);
+	print $csv->string, "\n";
+    }
+
+    if ( $E_Today && $a{E_Today} < $E_Today ) {
+	# Dropped. Adjust base value with the previous value.
+	$E_Today_Base += $E_Today;
+    }
+    else {
+	# Initialize at the current value, assume this is the 'zero' point.
+	$E_Today_Base //= -$a{E_Today};
+    }
+    $a{E_Today} = $E_Today_Base + ($E_Today = $a{E_Today});
+
+    $status = $csv->combine(@a{@fields});
+    print $csv->string, "\n";
 }
 
 sub print_data {
@@ -259,7 +297,7 @@ sub print_data {
     printf( "%-11s %8.1f %-10s\n", "Tempfault",   $a{Tmpfault},  " C" );
     printf( "%-11s %8.1f %-10s",   "GFCI Fault",  $a{GFCIF},     "mA" );
     printf( "%-11s %8.1f %-10s",   "Vacfault",    $a{Vacfault},  " V" );
-    printf( "%-11s %8s\n",         "Faultcode",   $a{Faultcode}      );
+    printf( "%-11s     0x%02X\n",  "Faultcode",   $a{Faultcode}      );
     printf( "%-11s %8.1f %-10s",   "DCI Fault",   $a{DCIF},      " A" );
     printf( "%-11s %9.2f %-10s\n", "Facfault",    $a{Facfault},  "Hz" );
     print( "-" x 87, "\n" );
@@ -299,8 +337,8 @@ sub app_options {
 
     if ( !GetOptions(
 		     'version=i' => \$gwversion,
-		     'print!'	=> sub { $print = $_[1]; $plot = 0 },
-		     'plot!'	=> sub { $plot = $_[1]; $print = 0 },
+		     'print!'	=> sub { $print = $_[1]; $export = 0 },
+		     'csv!'	=> sub { $export = $_[1]; $print = 0 },
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
@@ -324,10 +362,11 @@ sub app_usage {
 Usage: $0 [options] [file ...]
     --version=NN		Growatt Wifi module version, default 3.
     --[no]print			generate printed report (default)
-    --[no]plot			generate gnuplot data (experimental)
+    --[no]csv			generate CSV data
     --help			this message
     --ident			show identification
     --verbose			verbose information
 EndOfUsage
     exit $exit if defined $exit && $exit != 0;
 }
+
