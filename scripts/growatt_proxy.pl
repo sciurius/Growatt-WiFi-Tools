@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Fri Jul  3 21:10:31 2015
-# Update Count    : 55
+# Last Modified On: Sat Jul  4 08:53:37 2015
+# Update Count    : 57
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.10 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.11 );
 
 ################ Command line parameters ################
 
@@ -100,7 +100,7 @@ my $sentinel = ".reload";
 $debug = 1;			# for the time being
 $| = 1;				# flush standard output
 
-print( ts(), " Starting growatt proxy server version $my_version",
+print( ts(), " Starting Growatt proxy server version $my_version",
        " on 0.0.0.0:$local_port\n" );
 my $server = new_server( '0.0.0.0', $local_port );
 $ioset->add($server);
@@ -267,14 +267,14 @@ sub handle_package {
 	    undef $datalogger;
 	    $tag = "server";
 
-	    printf( "==== %s %s NACK %x%x ====\n\n",
+	    printf( "==== %s %s NACK %02x ====\n\n",
 		    $ts, $tag,
 		    unpack( "C", substr( $data, 0, 1 ) ) );
 	    return 1;
 	}
 
 	# Dump energy reports to individual files.
-	if ( $type = 0x0104 && $length > 210 ) {
+	if ( $type == 0x0104 && $length > 210 ) {
 	    # Only the client sends this.
 	    $tag = "client";
 	    $datalogger = $socket;
