@@ -1,7 +1,7 @@
 This is a set of tools to play with the Growatt WiFi data collection
 module.
 
-1. Install Perl if necessary, add module Data::Hexify .
+1. Install Perl if neccessary, add module Data::Hexify .
 
 NOTE: You may need to adjust paths to scripts and files, depending on
 your installation.
@@ -13,7 +13,7 @@ your installation.
    make sure it keeps running!
 
 3. In the Growatt WiFi module, set the server to the system running
-   the proxy server. A reboot of the module is necessary.
+   the proxy server. A reboot of the module is neccessary.
 
 4. In the directory where the proxy server is running small data files
    will be created:
