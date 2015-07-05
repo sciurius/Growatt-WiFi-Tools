@@ -31,14 +31,12 @@ your installation.
 5. If you have a collection of data files, for example the data for
    one day, you can generate charts using
 
-   perl growatt_data.pl --csv 20150702*.dat > current_plot.csv
+   perl growatt_data.pl --csv 20150702*.dat > current.csv
    gnuplot growatt_data.plot
 
-   This will produce 3 PNG images:
+   This will produce a PNG image:
 
-   current_plot1.png - power production, total and per PV
-   current_plot2.png - power production and daily total
-   current_plot3.png - power production / temperature
+   current_plot0.png - power production, total and per PV
 
 WARNING: Use at your own risk.
 
