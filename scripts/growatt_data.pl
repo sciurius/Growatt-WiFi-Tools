@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Thu Jul  2 14:37:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sat Jul  4 22:11:24 2015
-# Update Count    : 133
+# Last Modified On: Sun Jul  5 21:25:39 2015
+# Update Count    : 137
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
@@ -15,7 +15,7 @@ use warnings;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_data 0.02 );
+my ($my_name, $my_version) = qw( growatt_data 0.03 );
 
 ################ Command line parameters ################
 
@@ -25,6 +25,7 @@ use Getopt::Long 2.13;
 my $gwversion = 3;		# Growatt WiFi module version
 my $print = 1;			# default: print report
 my $export = 0;			# generate CSV
+my $day = 0;			# processing one day's worth of files
 my $verbose = 0;		# verbose processing
 
 # Development options (not shown with -help).
@@ -230,15 +231,17 @@ sub export_data {
 	print $csv->string, "\n";
     }
 
-    if ( $E_Today && $a{E_Today} < $E_Today ) {
-	# Dropped. Adjust base value with the previous value.
-	$E_Today_Base += $E_Today;
+    if ( $day ) {
+	if ( $E_Today && $a{E_Today} < $E_Today ) {
+	    # Dropped. Adjust base value with the previous value.
+	    $E_Today_Base += $E_Today;
+	}
+	else {
+	    # Initialize at the current value, assume this is the 'zero' point.
+	    $E_Today_Base //= -$a{E_Today};
+	}
+	$a{E_Today} = $E_Today_Base + ($E_Today = $a{E_Today});
     }
-    else {
-	# Initialize at the current value, assume this is the 'zero' point.
-	$E_Today_Base //= -$a{E_Today};
-    }
-    $a{E_Today} = $E_Today_Base + ($E_Today = $a{E_Today});
 
     $status = $csv->combine(@a{@fields});
     print $csv->string, "\n";
@@ -339,6 +342,7 @@ sub app_options {
 		     'version=i' => \$gwversion,
 		     'print!'	=> sub { $print = $_[1]; $export = 0 },
 		     'csv!'	=> sub { $export = $_[1]; $print = 0 },
+		     'day'	=> \$day,
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
@@ -363,6 +367,7 @@ Usage: $0 [options] [file ...]
     --version=NN		Growatt Wifi module version, default 3.
     --[no]print			generate printed report (default)
     --[no]csv			generate CSV data
+    --day			processing data of a single day
     --help			this message
     --ident			show identification
     --verbose			verbose information
