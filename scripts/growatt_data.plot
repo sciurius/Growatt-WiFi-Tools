@@ -18,7 +18,7 @@ set format x "%H:%M"
 
 # Extract the current date from row 2, col 1.
 set macros
-datafile = 'current_plot.csv'
+datafile = 'current.csv'
 set datafile separator ","
 today = `perl -an -F, -e '$. == 2 && do { print q{"},$F[0],q{"};exit }' @datafile`
 
