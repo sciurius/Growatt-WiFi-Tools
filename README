@@ -31,12 +31,16 @@ your installation.
 5. If you have a collection of data files, for example the data for
    one day, you can generate charts using
 
-   perl growatt_data.pl --csv 20150702*.dat > current.csv
+   perl growatt_data.pl --date --csv 20150702*.dat > current.csv
    gnuplot growatt_data.plot
 
    This will produce a PNG image:
 
-   current_plot0.png - power production, total and per PV
+   current.png - power production, accumulative, total and per PV
+
+   Note: The daily totals as registered by the WiFi module are usually
+   off, and may be reset during the daytime. The --day command line
+   option fixes this in the resultant csv file.
 
 WARNING: Use at your own risk.
 
