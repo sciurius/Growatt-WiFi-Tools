@@ -9,10 +9,12 @@
 #
 #   gnuplot -e 'datafile="data/20150704.csv";imagefile="here/plot.png" growatt_data.plot
 
-set term png size 1024,600;
+if ( ! exists("term") ) term = "png";
+set term term size 1024,600;
+set locale ""
 
 # Allow setting of imagefile on the command line.
-if ( ! exists("imagefile") ) imagefile = 'current_plot%d.png'
+if ( ! exists("imagefile") ) imagefile = 'current_plot%d.' . term
 imagecnt = 0;
 
 # Horizontal axis: time
@@ -50,12 +52,12 @@ set autoscale y2
 set key left
 
 plot datafile \
-    using "SampleTime":(column("Ppv")/1000) \
+    using "SampleTime":(column("E_Today")/1000) \
+        axes x1y2 with lines lw 3 title "Cum. (kW)", \
+    '' using "SampleTime":(column("Ppv")/1000) \
 	with lines lw 2 title "Power (kW)", \
     '' using "SampleTime":(column("Ppv1")/1000) \
         with lines title "PV1 (kW)", \
     '' using "SampleTime":(column("Ppv2")/1000) \
-        with lines title "PV2 (kW)", \
-    '' using "SampleTime":(column("E_Today")/1000) \
-        axes x1y2 with lines lw 3 title "Cum. (kW)"
+        with lines title "PV2 (kW)" \
 
