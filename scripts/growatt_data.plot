@@ -1,7 +1,18 @@
 # Produce PNG images.
 
+# Usage:
+#
+#   cd data	# where current.csv lives
+#   gnuplot ../scripts/growatt_data.plot
+#
+# Alternatively:
+#
+#   gnuplot -e 'datafile="data/20150704.csv";imagefile="here/plot.png" growatt_data.plot
+
 set term png size 1024,600;
-imagefile = 'current_plot%d.png'
+
+# Allow setting of imagefile on the command line.
+if ( ! exists("imagefile") ) imagefile = 'current_plot%d.png'
 imagecnt = 0;
 
 # Horizontal axis: time
@@ -18,9 +29,11 @@ set format x "%H:%M"
 
 # Extract the current date from row 2, col 1.
 set macros
-datafile = 'current.csv'
+# Allow setting of datafile on the command line.
+if ( ! exists("datafile") ) datafile = 'current.csv'
 set datafile separator ","
 today = `perl -an -F, -e '$. == 2 && do { print q{"},$F[0],q{"};exit }' @datafile`
+today = strptime( "%d-%m-%Y", today )
 
 # Column definitions in CSV data file.
 ix = 1;
@@ -72,9 +85,7 @@ F_Rac		= ix; ix = ix + 1;
 F_ERactoday	= ix; ix = ix + 1;
 F_ERactotal	= ix; ix = ix + 1;
 
-# Need to make more friendly. Later.
-# set title strftime( "%A, %d %B %Y", today )
-set title today
+set title strftime( "%A, %d %B %Y", today )
 set ytics nomirror
 set grid xtics ytics
 
@@ -96,5 +107,5 @@ set key left
 plot datafile @u0     with lines lw 2 title "Power (kW)", \
      '' @u1           with lines title "PV1 (kW)", \
      '' @u2           with lines title "PV2 (kW)", \
-     '' @u3 axes x1y2 with lines title "Cum. (kW)"
+     '' @u3 axes x1y2 with lines lw 3 title "Cum. (kW)"
 
