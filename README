@@ -19,6 +19,8 @@ your installation.
    will be created:
 
 	   20150702163939.dat
+	   20150702164451.dat
+	   ...and so on...
 
    You can read these with
 
@@ -31,7 +33,7 @@ your installation.
 5. If you have a collection of data files, for example the data for
    one day, you can generate charts using
 
-   perl growatt_data.pl --date --csv 20150702*.dat > current.csv
+   perl growatt_data.pl --day --csv 20150702*.dat > current.csv
    gnuplot growatt_data.plot
 
    This will produce a PNG image:
@@ -40,7 +42,7 @@ your installation.
 
    Note: The daily totals as registered by the WiFi module are usually
    off, and may be reset during the daytime. The --day command line
-   option fixes this in the resultant csv file.
+   option tries to fix this in the resultant csv file.
 
 WARNING: Use at your own risk.
 
