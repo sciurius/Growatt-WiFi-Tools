@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sat Jul  4 08:53:37 2015
-# Update Count    : 57
+# Last Modified On: Thu Jul  9 11:30:45 2015
+# Update Count    : 59
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.11 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.12 );
 
 ################ Command line parameters ################
 
@@ -64,7 +64,7 @@ use Getopt::Long 2.13;
 
 # Command line options.
 my $local_port = 5279;		# local port
-my $remote_host = "server.growatt.com";		# remote server
+my $remote_host = "42.121.252.160";		# remote server ####TODO
 my $remote_port = 5279;		# remote port
 my $verbose = 0;		# verbose processing
 
