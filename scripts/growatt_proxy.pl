@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Thu Jul  9 11:30:45 2015
-# Update Count    : 59
+# Last Modified On: Thu Jul  9 13:39:58 2015
+# Update Count    : 66
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.12 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.14 );
 
 ################ Command line parameters ################
 
@@ -64,7 +64,7 @@ use Getopt::Long 2.13;
 
 # Command line options.
 my $local_port = 5279;		# local port
-my $remote_host = "42.121.252.160";		# remote server ####TODO
+my $remote_host = "server.growatt.com";		# remote server
 my $remote_port = 5279;		# remote port
 my $verbose = 0;		# verbose processing
 
@@ -116,8 +116,9 @@ while ( 1 ) {
             my $buffer;
             my $len = $socket->sysread($buffer, 4096);
             if ( $len ) {
+		$buffer = preprocess_package( $socket, $buffer );
                 $remote->syswrite($buffer);
-		handle_package( $socket, $buffer );
+		postprocess_package( $socket, $buffer );
             }
             else {
                 close_connection($socket);
@@ -205,7 +206,33 @@ sub client_allowed {
 
 my $datalogger;			# keep track of C/S
 
-sub handle_package {
+sub preprocess_package {
+    my ( $socket, $buffer ) = @_;
+
+    # Assume the first message is from the data logger.
+    $datalogger ||= $socket;
+    my $tag = $socket == $datalogger ? "client" : "server";
+
+    # Pretend that we're listening to their server.
+    if ( $buffer =~ /^(.*\x00\x13\x00\x12)groprx.squirrel.nl(.*)/ ) {
+	my $ts = ts();
+	print( "==== $ts $tag FIXED ====\n", Hexify(\$buffer), "\n");
+	$buffer = $1. "server.growatt.com" . $2;
+	print( Hexify(\$buffer), "\n");
+    }
+
+    # Refuse to change the server.
+    elsif ( $buffer =~ /^(.*\x00\x13\x00\x12)(server.growatt.com)(.*)/ ) {
+	my $ts = ts();
+	print( "==== $ts $tag FIXED ====\n", Hexify(\$buffer), "\n");
+	$buffer = $1. "groprx.squirrel.nl" . $3;
+	print( Hexify(\$buffer), "\n");
+    }
+
+    return $buffer;
+}
+
+sub postprocess_package {
     my ( $socket, $buffer ) = @_;
 
     # Assume the first message is from the data logger.
