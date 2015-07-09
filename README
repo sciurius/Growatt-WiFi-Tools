@@ -44,6 +44,10 @@ your installation.
    off, and may be reset during the daytime. The --day command line
    option tries to fix this in the resultant csv file.
 
+   Also note that the format of the csv file generated is now the same
+   as an export from the spreadsheet data that can be downloaded from
+   the Growatt site.
+
 WARNING: Use at your own risk.
 
 Feedback welcome.
