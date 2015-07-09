@@ -35,7 +35,6 @@ set macros
 if ( ! exists("datafile") ) datafile = 'current.csv'
 set datafile separator ","
 today = `perl -an -F, -e '$. == 2 && do { print q{"},$F[1],q{"};exit }' @datafile`
-print today
 today = strptime( '%Y-%m-%d %H:%M:%S', today )
 
 set title strftime( "%A, %d %B %Y", today )
