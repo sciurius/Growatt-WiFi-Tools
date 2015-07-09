@@ -3,19 +3,20 @@
 # Author          : Johan Vromans
 # Created On      : Thu Jul  2 14:37:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Jul  5 21:25:39 2015
-# Update Count    : 137
+# Last Modified On: Thu Jul  9 22:11:51 2015
+# Update Count    : 158
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
 
 use strict;
 use warnings;
+use utf8;
 
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_data 0.03 );
+my ($my_name, $my_version) = qw( growatt_data 0.04 );
 
 ################ Command line parameters ################
 
@@ -51,6 +52,65 @@ my @fields = qw( SampleDate SampleTime
 		 IPMtemp Pbusvolt Nbusvolt
 		 Epv1today Epv1total Epv2today Epv2total Epvtotal
 		 Rac ERactoday ERactotal );
+
+my %csvmap = ( # SampleDate    => "Time",
+	       # SampleTime    => "Time",
+	       # DataLoggerId  => undef,
+	       InverterId    => "Alias / Serial number",
+	       # InvStat     => undef,
+	       InvStattxt    => "Status",
+	       Ppv	     => "Ppv(W)",
+	       Vpv1	     => "Vpv1(V)",
+	       Ipv1	     => "Ipv1(A)",
+	       Ppv1	     => "Ppv1(W)",
+	       Vpv2	     => "Vpv2(V)",
+	       Ipv2	     => "Ipv2(A)",
+	       Ppv2	     => "Ppv2(W)",
+	       Pac	     => "Pac(W)",
+	       Fac	     => "Fac(Hz)",
+	       Vac1	     => "Vac(R)(V)",
+	       Iac1	     => "Iac(R)(A)",
+	       Pac1	     => "PacR(W)",
+	       Vac2	     => "VacS(V)",
+	       Iac2	     => "IacS(A)",
+	       Pac2	     => "PacS(W)",
+	       Vac3	     => "VacT(V)",
+	       Iac3	     => "IacT(A)",
+	       Pac3	     => "PacT(W)",
+	       E_Today	     => "Eac_today(kWh)",
+	       E_Total	     => "Eac_total(kWh)",
+	       Tall	     => "T_total(H)",
+	       Tmp	     => "Temperature(℃)",
+	       Faultcode     => "WarnCode",
+	       IPMtemp	     => "IPM Temperature(℃)",
+	       Pbusvolt	     => "P BUS Voltage(V)",
+	       Nbusvolt	     => "N BUS Voltage(V)",
+	       Epv1today     => "Epv1_today(kWh)",
+	       Epv1total     => "Epv1_total(kWh)",
+	       Epv2today     => "Epv2_today(kWh)",
+	       Epv2total     => "Epv2_total(kWh)",
+	       Epvtotal	     => "Epv_total(kWh)",
+	       Rac	     => "Rac(Var)",
+	       ERactoday     => "E_Rac_today(KVarh)",
+	       ERactotal     => "E_Rac_total(KVarh)",
+	       # ISOF	     => undef,
+	       # GFCIF	     => undef,
+	       # DCIF	     => undef,
+	       # Vpvfault    => undef,
+	       # Vacfault    => undef,
+	       # Facfault    => undef,
+	       # Tmpfault    => undef,
+	       # undef	     => "Power Factor",
+	     );
+
+my @csvfields = ( "Alias / Serial number",
+		  qw( Time Status Vpv1(V) Ipv1(A) Ppv1(W) Vpv2(V) Ipv2(A) Ppv2(W) Ppv(W)
+		      Vac(R)(V) VacS(V) VacT(V) Iac(R)(A) IacS(A) IacT(A) Fac(Hz)
+		      Pac(W) PacR(W) PacS(W) PacT(W) Temperature(℃)
+		      Eac_today(kWh) Eac_total(kWh) T_total(H)),
+		  "IPM Temperature(℃)", "P BUS Voltage(V)", "N BUS Voltage(V)", "Power Factor",
+		  qw( Epv1_today(kWh) Epv1_total(kWh) Epv2_today(kWh) Epv2_total(kWh) Epv_total(kWh)
+		      Rac(Var) E_Rac_today(KVarh) E_Rac_total(KVarh) WarnCode ) );
 
 my $TMPDIR = $ENV{TMPDIR} || $ENV{TEMP} || '/usr/tmp';
 
@@ -117,7 +177,7 @@ sub process_file {
 
     # Print (for now).
     print_data($a)  if $print;
-    export_data($a) if $export;
+    export_csv($a) if $export;
 }
 
 use Data::Hexify;
@@ -244,6 +304,50 @@ sub export_data {
     }
 
     $status = $csv->combine(@a{@fields});
+    print $csv->string, "\n";
+}
+
+sub export_csv {
+    my ( $a ) = @_;
+    my %a = %$a;
+
+    my $status;
+    unless ( $csv ) {
+	$csv = Text::CSV->new( { binary => 1,
+				 quote_space => 0,
+				 always_quote => 0 } );
+	my $status = $csv->combine(@csvfields);
+	binmode( STDOUT, ':utf8' );
+	print $csv->string, "\n";
+    }
+
+    if ( $day ) {
+	if ( $E_Today && $a{E_Today} < $E_Today ) {
+	    # Dropped. Adjust base value with the previous value.
+	    $E_Today_Base += $E_Today;
+	}
+	else {
+	    # Initialize at the current value, assume this is the 'zero' point.
+	    $E_Today_Base //= -$a{E_Today};
+	}
+	$a{E_Today} = $E_Today_Base + ($E_Today = $a{E_Today});
+    }
+
+    my %b;
+    $a{SampleDate} =~ /^(\d\d)-(\d\d)-(\d\d\d\d)/
+      and $b{Time} = "$3-$2-$1 " . $a{SampleTime};
+
+    while ( my($k,$v) = each(%csvmap) ) {
+	$b{$v} = $a{$k} || 0;
+    }
+    $b{Status} = ucfirst($b{Status});
+    $b{"Power Factor"} = 1;	# ????
+
+    foreach ( @csvfields ) {
+	warn("UNDEF: $_\n") unless defined $b{$_};
+    }
+
+    $status = $csv->combine(@b{@csvfields});
     print $csv->string, "\n";
 }
 

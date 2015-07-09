@@ -25,7 +25,7 @@ set yrange [ 0:7 ]
 set format y "%g kW"
 
 # Input time format from CSV file.
-set timefmt '%H:%M:%S'
+set timefmt '%Y-%m-%d %H:%M:%S'
 # Output time format ( x-axis).
 set format x "%H:%M"
 
@@ -34,8 +34,9 @@ set macros
 # Allow setting of datafile on the command line.
 if ( ! exists("datafile") ) datafile = 'current.csv'
 set datafile separator ","
-today = `perl -an -F, -e '$. == 2 && do { print q{"},$F[0],q{"};exit }' @datafile`
-today = strptime( "%d-%m-%Y", today )
+today = `perl -an -F, -e '$. == 2 && do { print q{"},$F[1],q{"};exit }' @datafile`
+print today
+today = strptime( '%Y-%m-%d %H:%M:%S', today )
 
 set title strftime( "%A, %d %B %Y", today )
 set ytics nomirror
@@ -52,12 +53,12 @@ set autoscale y2
 set key left
 
 plot datafile \
-    using "SampleTime":(column("E_Today")/1000) \
-        axes x1y2 with lines lw 3 title "Cum. (kW)", \
-    '' using "SampleTime":(column("Ppv")/1000) \
+    using "Time":(column("Eac_today(kWh)")/1000) \
+        axes x1y2 with lines lw 3 title "Cum. (kWh)", \
+    '' using "Time":(column("Ppv1(W)")/1000)+(column("Ppv2(W)")/1000) \
 	with lines lw 2 title "Power (kW)", \
-    '' using "SampleTime":(column("Ppv1")/1000) \
+    '' using "Time":(column("Ppv1(W)")/1000) \
         with lines title "PV1 (kW)", \
-    '' using "SampleTime":(column("Ppv2")/1000) \
+    '' using "Time":(column("Ppv2(W)")/1000) \
         with lines title "PV2 (kW)" \
 
