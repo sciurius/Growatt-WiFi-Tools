@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Thu Jul  9 13:39:58 2015
-# Update Count    : 66
+# Last Modified On: Fri Jul 10 09:36:38 2015
+# Update Count    : 75
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -63,9 +63,11 @@ my ($my_name, $my_version) = qw( growatt_proxy 0.14 );
 use Getopt::Long 2.13;
 
 # Command line options.
-my $local_port = 5279;		# local port
-my $remote_host = "server.growatt.com";		# remote server
-my $remote_port = 5279;		# remote port
+# NOTE: CURRENTLY, LOCAL HOST AND REMOTE HOST MUST BE EXACTLY 18 CHARS LONG
+my $local_host  = "groprx.squirrel.nl";	# proxy server (this hist)
+my $local_port  = 5279;		# local port. DO NOT CHANGE
+my $remote_host = "server.growatt.com";		# remote server. DO NOT CHANGE
+my $remote_port = 5279;		# remote port. DO NOT CHANGE
 my $verbose = 0;		# verbose processing
 
 # Development options (not shown with -help).
@@ -213,20 +215,20 @@ sub preprocess_package {
     $datalogger ||= $socket;
     my $tag = $socket == $datalogger ? "client" : "server";
 
-    # Pretend that we're listening to their server.
-    if ( $buffer =~ /^(.*\x00\x13\x00\x12)groprx.squirrel.nl(.*)/ ) {
-	my $ts = ts();
-	print( "==== $ts $tag FIXED ====\n", Hexify(\$buffer), "\n");
-	$buffer = $1. "server.growatt.com" . $2;
-	print( Hexify(\$buffer), "\n");
-    }
+    my $rhp = qr/$remote_host/;
+    my $lhp = qr/$local_host/;
+    my $fixed = $buffer;
+    my $ts = ts();
 
+    # Pretend that we're listening to their server.
+    $buffer =~ s/^(.*\x00(?:\x13|\x11)\x00\x12)$lhp(.*)/$1$remote_host$2/g;
     # Refuse to change the server.
-    elsif ( $buffer =~ /^(.*\x00\x13\x00\x12)(server.growatt.com)(.*)/ ) {
-	my $ts = ts();
-	print( "==== $ts $tag FIXED ====\n", Hexify(\$buffer), "\n");
-	$buffer = $1. "groprx.squirrel.nl" . $3;
-	print( Hexify(\$buffer), "\n");
+    $buffer =~ s/^(.*\x00\x13\x00\x12)$rhp(.*)/$1$local_host$2/g
+      if $fixed eq $buffer;
+
+    if ( $fixed ne $buffer ) {
+	print( "==== $ts $tag FIXED ====\n", Hexify(\$fixed), "\n",
+	       Hexify(\$buffer), "\n");
     }
 
     return $buffer;
