@@ -46,7 +46,7 @@ set grid xtics ytics
 # Right vertical axis: Accum. power for this day.
 set output sprintf( imagefile, imagecnt ); imagecnt = imagecnt + 1
 
-set format y2 "%g kW"
+set format y2 "%g kWh"
 set y2tics
 set autoscale y2
 set key left
