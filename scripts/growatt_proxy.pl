@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Fri Jul 10 09:36:38 2015
-# Update Count    : 75
+# Last Modified On: Sun Jul 12 20:48:32 2015
+# Update Count    : 135
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,18 +56,22 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.14 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.40 );
 
 ################ Command line parameters ################
 
 use Getopt::Long 2.13;
 
+use constant REMOTE_SERVER => "server.growatt.com";
+use constant REMOTE_PORT   => 5279;
+use constant LOCAL_PORT    => 5279;
+
 # Command line options.
-# NOTE: CURRENTLY, LOCAL HOST AND REMOTE HOST MUST BE EXACTLY 18 CHARS LONG
-my $local_host  = "groprx.squirrel.nl";	# proxy server (this hist)
-my $local_port  = 5279;		# local port. DO NOT CHANGE
-my $remote_host = "server.growatt.com";		# remote server. DO NOT CHANGE
-my $remote_port = 5279;		# remote port. DO NOT CHANGE
+my $local_host  = "groprx.squirrel.nl";	# proxy server (this host)
+my $local_port  = LOCAL_PORT;		# local port. DO NOT CHANGE
+my $remote_host = REMOTE_SERVER;	# remote server. DO NOT CHANGE
+my $remote_port = LOCAL_PORT;		# remote port. DO NOT CHANGE
+my $data_logger = "AH44460477";
 my $verbose = 0;		# verbose processing
 
 # Development options (not shown with -help).
@@ -85,6 +89,11 @@ $trace |= ($debug || $test);
 
 my $TMPDIR = $ENV{TMPDIR} || $ENV{TEMP} || '/usr/tmp';
 
+if ( $test ) {
+    test();
+    exit;
+}
+
 ################ The Process ################
 
 use IO::Socket::INET;
@@ -98,11 +107,12 @@ my @allowed_ips = ('all', '10.10.10.5');
 my $ioset = IO::Select->new;
 my %socket_map;
 my $sentinel = ".reload";
+my $remote_socket;
 
 $debug = 1;			# for the time being
 $| = 1;				# flush standard output
 
-print( ts(), " Starting Growatt proxy server version $my_version",
+print( "==== ", ts(), " Starting Growatt proxy server version $my_version",
        " on 0.0.0.0:$local_port\n" );
 my $server = new_server( '0.0.0.0', $local_port );
 $ioset->add($server);
@@ -111,21 +121,66 @@ while ( 1 ) {
     for my $socket ( $ioset->can_read ) {
         if ( $socket == $server ) {
             new_connection( $server, $remote_host, $remote_port );
+	    next;
         }
-        else {
-            next unless exists $socket_map{$socket};
-            my $remote = $socket_map{$socket};
-            my $buffer;
-            my $len = $socket->sysread($buffer, 4096);
-            if ( $len ) {
-		$buffer = preprocess_package( $socket, $buffer );
-                $remote->syswrite($buffer);
-		postprocess_package( $socket, $buffer );
-            }
-            else {
-                close_connection($socket);
-            }
-        }
+
+	next unless exists $socket_map{$socket};
+
+	my $ts = ts();
+	my $tag = $socket == $remote_socket ? "server" : "client";
+
+	my $remote = $socket_map{$socket};
+	my $buffer;
+	my $len = $socket->sysread( $buffer, 40960 );
+	unless ( defined $len ) {
+	    warn( $ts, "  Socket read error ($tag): $!\n");
+	    next;
+	}
+	if ( $len == 0 ) {
+	    close_connection($socket);
+            next;
+	}
+
+	my $orig = $buffer;
+	my $dgrams = split_message( $socket, $buffer );
+	foreach ( @$dgrams ) {
+	    $_ = process_datagram($_);
+	}
+	$buffer = assemble_message($dgrams);
+
+	my $did;
+	if ( @$dgrams == 1 ) {
+	  for ( $dgrams->[0] ) {
+	    if ( $_->{type} == 0x0116 ) {
+		print( "==== $ts  $tag PING\n\n" );
+		$did++;
+	    }
+	    elsif ( $_->{data_raw} eq "\x01\x04\x00" ) {
+		print( "==== $ts  $tag ACK\n\n" );
+		$did++;
+	    }
+	    elsif ( $_->{data_raw} eq "\x01\x03\x00" ) {
+		print( "==== $ts  $tag NACK\n\n" );
+		$did++;
+	    }
+	  }
+	}
+
+	print( "==== $ts\n", Hexify(\$orig), "\n" ) unless $did++;
+	if ( $orig ne $buffer ) {
+	    print( "==== $ts  $tag FIXED\n",
+		   Hexify(\$buffer), "\n" );
+	}
+
+	$len = $remote->syswrite($buffer);
+	unless ( defined $len ) {
+	    warn( "==== $ts  Socket wite error ($tag): $!\n" );
+	    next;
+	}
+	if ( $len == 0 ) {
+	    warn( "==== $ts  Socket wite error ($tag): EOF\n" );
+            next;
+	}
     }
 }
 
@@ -164,15 +219,16 @@ sub new_connection {
     my $client_ip = client_ip($client);
 
     unless ( client_allowed($client) ) {
-        print( ts(), " Connection from $client_ip denied.\n" ) if $debug;
+        print( "==== ", ts(), " Connection from $client_ip denied.\n" ) if $debug;
         $client->close;
         return;
     }
-    print( ts(), " Connection from $client_ip accepted.\n") if $debug;
+    print( "==== ", ts(), " Connection from $client_ip accepted.\n") if $debug;
 
     my $remote = new_conn( $remote_host, $remote_port );
     $ioset->add($client);
     $ioset->add($remote);
+    $remote_socket ||= $remote;
 
     $socket_map{$client} = $remote;
     $socket_map{$remote} = $client;
@@ -192,7 +248,7 @@ sub close_connection {
     $client->close;
     $remote->close;
 
-    print( ts(), " Connection from $client_ip closed.\n" ) if $debug;
+    print( "==== ", ts(), " Connection from $client_ip closed.\n" ) if $debug;
 }
 
 sub client_ip {
@@ -207,6 +263,85 @@ sub client_allowed {
 }
 
 my $datalogger;			# keep track of C/S
+
+sub split_message {
+    my ( $socket, $buffer ) = @_;
+
+    my $d = [];
+
+    while ( length($buffer) ) {
+	unless ( $buffer =~ /^\x00\x01\x00\x02(..)(..)/ ) {
+	    push( @$d, { type   => -1,
+			 length => length($buffer),
+			 data   => $buffer,
+			 socket => $socket,
+		       } );
+	    return $d;
+	}
+	my $length = unpack( "n", $1 );
+	my $type   = unpack( "n", $2 );
+	my $data   = substr( $buffer, 8, $length-2 );
+	$buffer    = substr( $buffer, 6 + $length );
+	my $res = { type     => $type,
+		    length   => $length,
+		    data_raw => $data,
+		    socket   => $socket,
+		  };
+	if ( $type == 0x0118 || $type == 0x0119 ) {
+	    $res->{data} =
+	      { logger   => substr($data,0,10),
+		type     => unpack("n",substr($data,10,2)),
+		length   => unpack("n",substr($data,12,2)),
+		data_raw => substr($data,14),
+	      };
+	}
+	push( @$d, $res );
+    }
+
+    return $d;
+}
+
+sub process_datagram {
+    my ( $dgram ) = @_;
+
+    my $fix;
+
+    # Reports from client to server.
+    if ( $dgram->{type} == 0x0119
+	 && ( $dgram->{data}->{type} == 0x0011
+	      || $dgram->{data}->{type} == 0x0013 ) ) {
+	$dgram->{data}->{data_raw} = REMOTE_SERVER;
+	$fix++;
+    }
+
+    # Server reconfig client.
+    if ( $dgram->{type} == 0x0118
+	 && $dgram->{data}->{type} == 0x0013 ) {
+	$dgram->{data}->{data_raw} = $local_host;
+	$fix++;
+    }
+
+    return $dgram;
+}
+
+sub assemble_message {
+    my ( $dgrams ) = @_;
+    my $buffer = "";
+    foreach ( @$dgrams ) {
+	if ( defined $_->{data} ) {
+	    $_->{data_raw} = $_->{data}->{logger} .
+			     pack( "nn",
+				   $_->{data}->{type},
+				   length($_->{data}->{data_raw})) .
+			     $_->{data}->{data_raw}
+	}
+	$buffer .= pack("nnnn", 1, 2,
+			length($_->{data_raw}) + 2,
+			$_->{type} ) .
+		   $_->{data_raw};
+    }
+    return $buffer;
+}
 
 sub preprocess_package {
     my ( $socket, $buffer ) = @_;
@@ -353,13 +488,17 @@ sub app_options {
 
     # Process options, if any.
     my $remote;
+    my $local;
 
     if ( !GetOptions(
 		     'listen'   => \$local_port,
 		     'remote'   => \$remote,
+		     'remote'   => \$local,
+		     'logger=s' => \$data_logger,
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
+		     'test'	=> \$test,
 		     'help|?'	=> \$help,
 		     'debug'	=> \$debug,
 		    ) or $help )
@@ -368,10 +507,24 @@ sub app_options {
     }
     app_ident() if $ident;
 
-    $local_port ||= 5279;
+    $local_port ||= LOCAL_PORT;
     if ( $remote ) {
 	( $remote_host, $remote_port ) = split( /:/, $remote );
     }
+    if ( $local ) {
+	( $local_host, $local_port ) = split( /:/, $local );
+    }
+
+    warn( "Possible configuration problem: listen port should be ",
+	  LOCAL_PORT, " instead of $local_port\n")
+      unless $local_port == LOCAL_PORT;
+    warn( "Possible configuration problem: remote server should be ",
+	  REMOTE_SERVER, " instead of $remote_host\n")
+      unless $remote_host eq REMOTE_SERVER;
+    warn( "Possible configuration problem: remote port should be ",
+	  LOCAL_PORT, " instead of $remote_port\n")
+      unless $remote_port == LOCAL_PORT;
+
 }
 
 sub app_ident {
@@ -384,6 +537,7 @@ sub app_usage {
     print STDERR <<EndOfUsage;
 Usage: $0 [options]
     --listen=NNNN		local port to listen to
+    --proxy=XXXX:NNNN		proxy server name and port
     --remote=XXXX:NNNN		remote server name and port
     --help			this message
     --ident			show identification
@@ -392,3 +546,47 @@ Usage: $0 [options]
 EndOfUsage
     exit $exit if defined $exit && $exit != 0;
 }
+
+sub readhex {
+    local $/;
+    my $d = <DATA>;
+    $d =~ s/^  ....: //gm;
+    $d =~ s/  .*$//gm;
+    $d =~ s/\s+//g;
+    $d = pack("H*", $d);
+    $d;
+}
+
+sub test {
+    my $buffer = readhex();
+    my $dgrams = split_message( 123, $buffer );
+    use Data::Dumper;
+    $Data::Dumper::Useqq = 1;
+    warn(Dumper($dgrams));
+    foreach ( @$dgrams ) {
+	$_ = process_datagram($_);
+    }
+    my $new = assemble_message($dgrams);
+    if ( $new eq $buffer ) {
+	print("OK\n");
+    }
+    else {
+	print( "ORIG:\n", Hexify(\$buffer), "\n\nNEW:\n", Hexify(\$new), "\n\n");
+    }
+}
+
+__DATA__
+  0000: 00 01 00 02 00 d9 01 04 41 48 34 34 34 36 30 34  ........AH444604
+  0010: 37 37 4f 50 32 34 35 31 30 30 31 37 00 00 00 00  77OP24510017....
+  0020: 00 00 02 00 00 00 2c 00 01 00 00 02 c2 0c 5f 00  ......,......._.
+  0030: 01 00 00 01 3c 0f 3c 00 01 00 00 01 86 00 00 01  ....<.<.........
+  0040: f2 13 83 08 f4 00 00 00 00 00 00 08 e3 00 01 00  ................
+  0050: 00 00 e3 08 f4 00 01 00 00 00 e5 00 00 01 00 00  ................
+  0060: 00 0a 81 00 14 0d 8e 01 a4 00 00 00 00 00 00 00  ................
+  0070: 00 09 04 12 60 00 00 00 00 01 ab 0b 40 0b 43 00  ....`.......@.C.
+  0080: 00 00 2d 00 59 4e 20 00 00 00 00 00 00 00 6a 00  ..-.YN .......j.
+  0090: 00 00 6a 00 00 00 99 00 00 09 c3 00 00 0a 2d 00  ..j...........-.
+  00a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  00b0: 01 00 01 11 70 00 00 00 00 00 00 00 00 00 00 00  ....p...........
+  00c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  00d0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00     ............... 
