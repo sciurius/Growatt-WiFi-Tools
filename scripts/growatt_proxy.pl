@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.14 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.14b );
 
 ################ Command line parameters ################
 
@@ -98,6 +98,7 @@ my @allowed_ips = ('all', '10.10.10.5');
 my $ioset = IO::Select->new;
 my %socket_map;
 my $sentinel = ".reload";
+my $remote_socket;
 
 $debug = 1;			# for the time being
 $| = 1;				# flush standard output
@@ -173,6 +174,7 @@ sub new_connection {
     my $remote = new_conn( $remote_host, $remote_port );
     $ioset->add($client);
     $ioset->add($remote);
+    $remote_socket = $remote;
 
     $socket_map{$client} = $remote;
     $socket_map{$remote} = $client;
@@ -206,14 +208,10 @@ sub client_allowed {
     return grep { $_ eq $client_ip || $_ eq 'all' } @allowed_ips;
 }
 
-my $datalogger;			# keep track of C/S
-
 sub preprocess_package {
     my ( $socket, $buffer ) = @_;
 
-    # Assume the first message is from the data logger.
-    $datalogger ||= $socket;
-    my $tag = $socket == $datalogger ? "client" : "server";
+    my $tag = $socket != $remote_socket ? "client" : "server";
 
     my $rhp = qr/$remote_host/;
     my $lhp = qr/$local_host/;
@@ -221,9 +219,9 @@ sub preprocess_package {
     my $ts = ts();
 
     # Pretend that we're listening to their server.
-    $buffer =~ s/^(.*\x00(?:\x13|\x11)\x00\x12)$lhp(.*)/$1$remote_host$2/g;
+    $buffer =~ s/(.*\x00(?:\x13|\x11)\x00\x12)$lhp/$1$remote_host/g;
     # Refuse to change the server.
-    $buffer =~ s/^(.*\x00\x13\x00\x12)$rhp(.*)/$1$local_host$2/g
+    $buffer =~ s/(.*\x00\x13\x00\x12)$rhp/$1$local_host/g
       if $fixed eq $buffer;
 
     if ( $fixed ne $buffer ) {
@@ -237,9 +235,7 @@ sub preprocess_package {
 sub postprocess_package {
     my ( $socket, $buffer ) = @_;
 
-    # Assume the first message is from the data logger.
-    $datalogger ||= $socket;
-    my $tag = $socket == $datalogger ? "client" : "server";
+    my $tag = $socket != $remote_socket ? "client" : "server";
 
     my $ts = ts();
     my $fail = 0;
@@ -263,9 +259,6 @@ sub postprocess_package {
 
 	# ACK.
 	if ( $type == 0x0104 && $length == 3 && length($buffer) == 0 ) {
-	    # Only the server sends this.
-	    undef $datalogger;
-	    $tag = "server";
 
 	    printf( "==== %s %s ACK %02x ====\n\n",
 		    $ts, $tag,
@@ -292,9 +285,6 @@ sub postprocess_package {
 
 	# NACK.
 	if ( $type == 0x0103 && $length == 3 ) {
-	    # Only the server sends this.
-	    undef $datalogger;
-	    $tag = "server";
 
 	    printf( "==== %s %s NACK %02x ====\n\n",
 		    $ts, $tag,
@@ -304,9 +294,6 @@ sub postprocess_package {
 
 	# Dump energy reports to individual files.
 	if ( $type == 0x0104 && $length > 210 ) {
-	    # Only the client sends this.
-	    $tag = "client";
-	    $datalogger = $socket;
 
 	    my $fn = $ts;
 	    $fn =~ s/[- :]//g;
