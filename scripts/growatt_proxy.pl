@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Fri Jul 10 09:36:38 2015
-# Update Count    : 75
+# Last Modified On: Mon Jul 13 15:40:42 2015
+# Update Count    : 81
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.14b );
+my ($my_name, $my_version) = qw( growatt_proxy 0.15 );
 
 ################ Command line parameters ################
 
@@ -92,8 +92,10 @@ use IO::Select;
 use Fcntl;
 use Data::Hexify;
 
-# Restrict connections to some ip's, or allow from all.
-my @allowed_ips = ('all', '10.10.10.5');
+if ( $test ) {
+    test();
+    exit;
+}
 
 my $ioset = IO::Select->new;
 my %socket_map;
@@ -164,14 +166,12 @@ sub new_connection {
     my $client = $server->accept;
     my $client_ip = client_ip($client);
 
-    unless ( client_allowed($client) ) {
-        print( ts(), " Connection from $client_ip denied.\n" ) if $debug;
-        $client->close;
-        return;
-    }
-    print( ts(), " Connection from $client_ip accepted.\n") if $debug;
+    print( ts(), " Connection from $client_ip accepted\n") if $debug;
 
     my $remote = new_conn( $remote_host, $remote_port );
+    print( ts(), " Connection to $remote_host (",
+	   $remote->peerhost, ") port $remote_port established\n") if $debug;
+
     $ioset->add($client);
     $ioset->add($remote);
     $remote_socket = $remote;
@@ -194,18 +194,12 @@ sub close_connection {
     $client->close;
     $remote->close;
 
-    print( ts(), " Connection from $client_ip closed.\n" ) if $debug;
+    print( ts(), " Connection from $client_ip closed\n" ) if $debug;
 }
 
 sub client_ip {
     my $client = shift;
-    return inet_ntoa($client->sockaddr);
-}
-
-sub client_allowed {
-    my $client = shift;
-    my $client_ip = client_ip($client);
-    return grep { $_ eq $client_ip || $_ eq 'all' } @allowed_ips;
+    return $client->peerhost;
 }
 
 sub preprocess_package {
@@ -219,9 +213,9 @@ sub preprocess_package {
     my $ts = ts();
 
     # Pretend that we're listening to their server.
-    $buffer =~ s/(.*\x00(?:\x13|\x11)\x00\x12)$lhp/$1$remote_host/g;
+    $buffer =~ s/(\x00(?:\x13|\x11)\x00\x12)$lhp/$1$remote_host/g;
     # Refuse to change the server.
-    $buffer =~ s/(.*\x00\x13\x00\x12)$rhp/$1$local_host/g
+    $buffer =~ s/(\x00\x13\x00\x12)$rhp/$1$local_host/g
       if $fixed eq $buffer;
 
     if ( $fixed ne $buffer ) {
@@ -347,6 +341,7 @@ sub app_options {
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
+		     'test'	=> \$test,
 		     'help|?'	=> \$help,
 		     'debug'	=> \$debug,
 		    ) or $help )
@@ -379,3 +374,32 @@ Usage: $0 [options]
 EndOfUsage
     exit $exit if defined $exit && $exit != 0;
 }
+
+sub readhex {
+    local $/;
+    my $d = <DATA>;
+    $d =~ s/^  ....: //gm;
+    $d =~ s/  .*$//gm;
+    $d =~ s/\s+//g;
+    $d = pack("H*", $d);
+    $d;
+}
+
+sub test {
+    my $buffer = readhex();
+    my $new = preprocess_package(123,$buffer);
+    print( "ORIG:\n", Hexify(\$buffer), "\n\nNEW:\n", Hexify(\$new), "\n\n");
+}
+
+__DATA__
+  0000: 00 01 00 02 00 21 01 19 41 48 34 34 34 36 30 34  .....!..AH444604
+  0010: 37 37 00 10 00 11 41 43 3a 43 46 3a 32 33 3a 33  77....AC:CF:23:3
+  0020: 44 3a 38 31 3a 45 35 00 01 00 02 00 22 01 19 41  D:81:E5....."..A
+  0030: 48 34 34 34 36 30 34 37 37 00 11 00 12 67 72 6f  H44460477....gro
+  0040: 70 72 78 2e 73 71 75 69 72 72 65 6c 2e 6e 6c 00  prx.squirrel.nl.
+  0050: 01 00 02 00 14 01 19 41 48 34 34 34 36 30 34 37  .......AH4446047
+  0060: 37 00 12 00 04 35 32 37 39 00 01 00 02 00 22 01  7....5279.....".
+  0070: 19 41 48 34 34 34 36 30 34 37 37 00 13 00 12 67  .AH44460477....g
+  0080: 72 6f 70 72 78 2e 73 71 75 69 72 72 65 6c 2e 6e  roprx.squirrel.n
+  0090: 6c 00 01 00 02 00 17 01 19 41 48 34 34 34 36 30  l........AH44460
+  00a0: 34 37 37 00 15 00 07 33 2e 31 2e 30 2e 30        477....3.1.0.0  
