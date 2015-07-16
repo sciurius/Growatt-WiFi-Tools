@@ -34,10 +34,16 @@ set macros
 # Allow setting of datafile on the command line.
 if ( ! exists("datafile") ) datafile = 'current.csv'
 set datafile separator ","
-today = `perl -an -F, -e '$. == 2 && do { print q{"},$F[1],q{"};exit }' @datafile`
-today = strptime( '%Y-%m-%d %H:%M:%S', today )
-
-set title strftime( "%A, %d %B %Y", today )
+if ( exists("final") ) {
+  today = `perl -an -F, -e '$. == 2 && do { print q{"},$F[1],q{"};exit }' @datafile`
+  today = strptime( '%Y-%m-%d %H:%M:%S', today )
+  set title strftime( "%A, %d %B %Y", today )
+}
+else {
+  today = `perl -an -F, -e 'eof && do { print q{"},$F[1],q{"};exit }' @datafile`
+  today = strptime( '%Y-%m-%d %H:%M:%S', today )
+  set title strftime( "%A, %d %B %Y, %H:%M:%S", today )
+}
 set ytics nomirror
 set grid xtics ytics
 
