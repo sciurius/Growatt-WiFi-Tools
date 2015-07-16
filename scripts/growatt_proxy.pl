@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Wed Jul 15 00:04:31 2015
-# Update Count    : 91
+# Last Modified On: Thu Jul 16 08:38:04 2015
+# Update Count    : 95
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.16b );
+my ($my_name, $my_version) = qw( growatt_proxy 0.17 );
 
 ################ Command line parameters ################
 
@@ -152,10 +152,15 @@ while ( 1 ) {
 
 sub new_conn {
     my ($host, $port) = @_;
-    return IO::Socket::INET->new(
-        PeerAddr => $host,
-        PeerPort => $port
-    ) || die "Unable to connect to $host:$port: $!";
+    for ( 0..4 ) {
+	my $s = IO::Socket::INET->new( PeerAddr => $host,
+				       PeerPort => $port
+				     );
+	return $s if $s;
+	print( "==== ", ts(), " Unable to connect to $host:$port: $! (retrying) ====\n\n" );
+	sleep 2 + random(2);
+    }
+    die( "==== ", ts(), " Unable to connect to $host:$port: $! ====\n\n" );
 }
 
 sub new_server {
