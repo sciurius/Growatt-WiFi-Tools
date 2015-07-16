@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Jul 13 15:40:42 2015
-# Update Count    : 81
+# Last Modified On: Wed Jul 15 00:04:31 2015
+# Update Count    : 91
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.15 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.16b );
 
 ################ Command line parameters ################
 
@@ -68,6 +68,7 @@ my $local_host  = "groprx.squirrel.nl";	# proxy server (this hist)
 my $local_port  = 5279;		# local port. DO NOT CHANGE
 my $remote_host = "server.growatt.com";		# remote server. DO NOT CHANGE
 my $remote_port = 5279;		# remote port. DO NOT CHANGE
+my $timeout = 1800;		# 30 minutes
 my $verbose = 0;		# verbose processing
 
 # Development options (not shown with -help).
@@ -110,8 +111,23 @@ print( ts(), " Starting Growatt proxy server version $my_version",
 my $server = new_server( '0.0.0.0', $local_port );
 $ioset->add($server);
 
+my $busy;
 while ( 1 ) {
-    for my $socket ( $ioset->can_read ) {
+    my @sockets = $ioset->can_read($timeout);
+    unless ( @sockets ) {
+	if ( $busy ) {
+	    print( "==== ", ts(), " TIMEOUT -- Reloading ====\n\n" );
+	    exit 0;
+	}
+	else {
+	    print( "==== ", ts(), " TIMEOUT ====\n\n" );
+	    next;
+	}
+	#close_all();
+	#next;
+    }
+    $busy = 1;
+    for my $socket ( @sockets ) {
         if ( $socket == $server ) {
             new_connection( $server, $remote_host, $remote_port );
         }
@@ -195,6 +211,19 @@ sub close_connection {
     $remote->close;
 
     print( ts(), " Connection from $client_ip closed\n" ) if $debug;
+}
+
+sub close_all {
+    foreach my $socket ( keys %socket_map ) {
+	next if $socket == $remote_socket;
+	close_connection($socket);
+    }
+    #### OOPS: $remote_socket has already been closed.
+    print( ts(), " Connection to ",
+	   $remote_socket->peerhost, " closed\n" ) if $debug;
+    $remote_socket->close;
+    undef $remote_socket;
+    %socket_map = ();
 }
 
 sub client_ip {
@@ -338,6 +367,7 @@ sub app_options {
     if ( !GetOptions(
 		     'listen'   => \$local_port,
 		     'remote'   => \$remote,
+		     'timeout=i' => \$timeout,
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
@@ -365,11 +395,12 @@ sub app_usage {
     app_ident();
     print STDERR <<EndOfUsage;
 Usage: $0 [options]
-    --listen=NNNN		local port to listen to
-    --remote=XXXX:NNNN		remote server name and port
-    --help			this message
-    --ident			show identification
-    --verbose			verbose information
+    --listen=NNNN	Local port to listen to (must be $local_port)
+    --remote=XXXX:NNNN	Remote server name and port (must be $remote_host:$remote_port)
+    --timeout=NNN	Timeout (default: $timeout seconds)
+    --help		This message
+    --ident		Shows identification
+    --verbose		More verbose information.
 
 EndOfUsage
     exit $exit if defined $exit && $exit != 0;
