@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Thu Jul 16 23:07:28 2015
-# Update Count    : 97
+# Last Modified On: Fri Jul 17 23:57:26 2015
+# Update Count    : 99
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.18 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.19 );
 
 ################ Command line parameters ################
 
@@ -116,10 +116,11 @@ while ( 1 ) {
     my @sockets = $ioset->can_read($timeout);
     unless ( @sockets ) {
 	if ( $busy || -f $sentinel ) {
-	    open( my $fd, '<', $sentinel );
-	    print <$fd>;
-	    close($fd);
-	    unlink($sentinel);
+	    if ( open( my $fd, '<', $sentinel ) ) {
+		print <$fd>;
+		close($fd);
+		unlink($sentinel);
+	    }
 	    print( "==== ", ts(), " TIMEOUT -- Reloading ====\n\n" );
 	    exit 0;
 	}
