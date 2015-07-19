@@ -57,9 +57,13 @@ set y2tics
 set autoscale y2
 set key left
 
+# The daily accum values are not useful, since they are reset during
+# the day. So use the total energy and subtract the initial value.
+E_init = `perl -an -F, -e '$. == 2 && do { print $F[23];exit }' @datafile`
+
 plot datafile \
-    using "Time":(column("Eac_today(kWh)")/1000) \
-        axes x1y2 with lines lw 3 title "Cum. (kWh)", \
+    using "Time":(column("Eac_total(kWh)")-E_init) \
+        axes x1y2  with lines lw 3 title "Cum. (kWh)", \
     '' using "Time":(column("Ppv1(W)")/1000)+(column("Ppv2(W)")/1000) \
 	with lines lw 2 title "Power (kW)", \
     '' using "Time":(column("Ppv1(W)")/1000) \
