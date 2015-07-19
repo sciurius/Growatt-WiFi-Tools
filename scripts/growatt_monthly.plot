@@ -10,7 +10,7 @@
 #   gnuplot -e 'datafile="data/20150704.csv";imagefile="here/plot.png" growatt_data.plot
 
 if ( ! exists("term") ) term = "png";
-set term term size 1024,600;
+set term term size 1024,300;
 set locale ""
 
 # Allow setting of imagefile on the command line.
