@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Thu Jul  2 14:37:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Thu Jul  9 22:11:51 2015
-# Update Count    : 158
+# Last Modified On: Sun Jul 19 16:55:30 2015
+# Update Count    : 163
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
@@ -16,7 +16,7 @@ use utf8;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_data 0.04 );
+my ($my_name, $my_version) = qw( growatt_data 0.05 );
 
 ################ Command line parameters ################
 
@@ -236,9 +236,8 @@ sub disassemble {
     $a{Vac3} = $up->(2, 1);
     $a{Iac3} = $up->(2, 1);
     $a{Pac3} = $up->(4, 1);
-    $a{E_Today} = $up->(4) * 100;
-    $a{E_Todayk} = sprintf("%.2f", $a{E_Today} / 1000);
-    $a{E_Total} = $up->(4, 1);
+    $a{E_Today} = sprintf("%.2f", $up->(4) / 10);
+    $a{E_Total} = sprintf("%.2f", $up->(4) / 10);
     $a{Tall} = $up->(4);
     $a{TallH} = sprintf("%.2f", $a{Tall}/(60*60*2));
     $a{Tmp} = $up->(2, 1);
@@ -259,12 +258,12 @@ sub disassemble {
       unless $off-$off0 == 103;
     $off += 12;
 
-    $a{Epv1today} = sprintf("%.2f", up($data, $off, 4)/10 ); $off += 4;
-    $a{Epv1total} = sprintf("%.2f", up($data, $off, 4)/10 ); $off += 4;
-    $a{Epv2today} = sprintf("%.2f", up($data, $off, 4)/10 ); $off += 4;
-    $a{Epv2total} = sprintf("%.2f", up($data, $off, 4)/10 ); $off += 4;
-    $a{Epvtotal} = sprintf("%.2f", up($data, $off, 4)/10 ); $off += 4;
-    $a{Rac} = sprintf("%.2f", up($data, $off, 4)*100 ); $off += 4;
+    $a{Epv1today} = sprintf("%.2f", up($data, $off, 4)/10  ); $off += 4;
+    $a{Epv1total} = sprintf("%.2f", up($data, $off, 4)/10  ); $off += 4;
+    $a{Epv2today} = sprintf("%.2f", up($data, $off, 4)/10  ); $off += 4;
+    $a{Epv2total} = sprintf("%.2f", up($data, $off, 4)/10  ); $off += 4;
+    $a{Epvtotal}  = sprintf("%.2f", up($data, $off, 4)/10  ); $off += 4;
+    $a{Rac}       = sprintf("%.2f", up($data, $off, 4)*100 ); $off += 4;
     $a{ERactoday} = sprintf("%.2f", up($data, $off, 4)*100 ); $off += 4;
     $a{ERactotal} = sprintf("%.2f", up($data, $off, 4)*100 ); $off += 4;
 
@@ -275,11 +274,6 @@ use Text::CSV;
 use IO::Wrap;
 my $csv;
 
-# The amount of enery per day resets when the inverter thinks the day
-# has changes. Keep track of the values.
-my $E_Today;
-my $E_Today_Base;
-
 sub export_data {
     my ( $a ) = @_;
     my %a = %$a;
@@ -289,18 +283,6 @@ sub export_data {
 	$csv = Text::CSV->new( { binary => 1 } );
 	my $status = $csv->combine(@fields);
 	print $csv->string, "\n";
-    }
-
-    if ( $day ) {
-	if ( $E_Today && $a{E_Today} < $E_Today ) {
-	    # Dropped. Adjust base value with the previous value.
-	    $E_Today_Base += $E_Today;
-	}
-	else {
-	    # Initialize at the current value, assume this is the 'zero' point.
-	    $E_Today_Base //= -$a{E_Today};
-	}
-	$a{E_Today} = $E_Today_Base + ($E_Today = $a{E_Today});
     }
 
     $status = $csv->combine(@a{@fields});
@@ -319,18 +301,6 @@ sub export_csv {
 	my $status = $csv->combine(@csvfields);
 	binmode( STDOUT, ':utf8' );
 	print $csv->string, "\n";
-    }
-
-    if ( $day ) {
-	if ( $E_Today && $a{E_Today} < $E_Today ) {
-	    # Dropped. Adjust base value with the previous value.
-	    $E_Today_Base += $E_Today;
-	}
-	else {
-	    # Initialize at the current value, assume this is the 'zero' point.
-	    $E_Today_Base //= -$a{E_Today};
-	}
-	$a{E_Today} = $E_Today_Base + ($E_Today = $a{E_Today});
     }
 
     my %b;
@@ -363,7 +333,7 @@ sub print_data {
     printf( "      Growatt temperature : %6.1f C\n", $a{Tmp} );
     print( "-" x 87, "\n" );
 
-    printf( "%-11s %8.1f %-10s",   "E_Today",     $a{E_Todayk},  "kWh" );
+    printf( "%-11s %8.1f %-10s",   "E_Today",     $a{E_Today},   "kWh" );
     printf( "%-11s %8.1f %-10s",   "E_Total",     $a{E_Total},   "kWh" );
     printf( "%-11s %8.1f %-10s\n", "Total time",  $a{TallH},     "hrs" );
     print( "-" x 87, "\n" );
