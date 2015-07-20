@@ -12,8 +12,21 @@ your installation.
 
    make sure it keeps running!
 
+   The script run_proxy.sh may be helpful.
+
 3. In the Growatt WiFi module, set the server to the system running
    the proxy server. A reboot of the module is neccessary.
+
+   NOTICE: Currently there's a hard-wired fix in the proxy server to
+   misinform the Growatt server that it is sending data to
+   "server.growatt.com". Likewise, if an instruction arrives from the
+   server to change the server address, this is changed to the actual
+   address. The hard wired part is that your local server needs to be
+   called "groprx.squirrel.nl", but you can change that to anything
+   else as long as is exactly 18 characters long.
+
+   I hope to remove this 'fix' when Growatt finally switches their
+   servers to another location.
 
 4. In the directory where the proxy server is running small data files
    will be created:
@@ -31,7 +44,7 @@ your installation.
    --version=1 command line option to the script.
 
 5. If you have a collection of data files, for example the data for
-   one day, you can generate charts using
+   one day, you can generate a chart using
 
    perl growatt_data.pl --day --csv 20150702*.dat > current.csv
    gnuplot growatt_data.plot
@@ -40,13 +53,19 @@ your installation.
 
    current.png - power production, accumulative, total and per PV
 
-   Note: The daily totals as registered by the WiFi module are usually
-   off, and may be reset during the daytime. The --day command line
-   option tries to fix this in the resultant csv file.
-
    Also note that the format of the csv file generated is now the same
    as an export from the spreadsheet data that can be downloaded from
    the Growatt site.
+
+6. If you have a series of current.csv data files, for example the
+   data for one month, you can generate a chart using
+
+   perl growatt_daily.pl 2015/07/*/current.csv > daily.csv
+   gnuplot growatt_daily.plot
+
+   This will produce a PNG image:
+
+   daily.png - power production per day
 
 WARNING: Use at your own risk.
 
