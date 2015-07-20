@@ -2,16 +2,15 @@
 
 # Usage:
 #
-#   cd data	# where current.csv lives
+#   cd data	# where daily.csv lives
 #   gnuplot ../scripts/growatt_data.plot
 #
 # Alternatively:
 #
-#   gnuplot -e 'datafile="data/20150704.csv";imagefile="here/plot.png" growatt_data.plot
+#   gnuplot -e 'datafile="data/daily.csv";imagefile="here/plot.png" growatt_daily.plot
 
 if ( ! exists("term") ) term = "png";
-set term term size 1024,300;
-set locale ""
+set term term size 1024,400;
 
 # Allow setting of imagefile on the command line.
 if ( ! exists("imagefile") ) imagefile = 'current_plot%d.' . term
@@ -20,7 +19,7 @@ imagecnt = 0;
 # Horizontal axis: time
 set xdata time
 
-# Left vertical axis: Power. My plant is 7kW max.
+# Left vertical axis: Power.
 set autoscale y
 set format y "%g kWh"
 
@@ -28,10 +27,11 @@ set format y "%g kWh"
 set timefmt '%Y-%m-%d'
 # Output time format ( x-axis).
 set format x "%d"
+set locale ""
 
 set macros
 # Allow setting of datafile on the command line.
-if ( ! exists("datafile") ) datafile = 'monthly.csv'
+if ( ! exists("datafile") ) datafile = 'daily.csv'
 set datafile separator ","
 set ytics nomirror
 set xtics nomirror

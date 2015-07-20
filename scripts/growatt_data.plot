@@ -63,7 +63,7 @@ E_init = `perl -an -F, -e '$. == 2 && do { print $F[23];exit }' @datafile`
 
 plot datafile \
     using "Time":(column("Eac_total(kWh)")-E_init) \
-        axes x1y2  with lines lw 3 title "Cum. (kWh)", \
+        axes x1y2  with lines lw 3 title "Total (kWh)", \
     '' using "Time":(column("Ppv1(W)")/1000)+(column("Ppv2(W)")/1000) \
 	with lines lw 2 title "Power (kW)", \
     '' using "Time":(column("Ppv1(W)")/1000) \

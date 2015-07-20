@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Sun Jul 19 16:27:22 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Jul 19 21:18:57 2015
-# Update Count    : 38
+# Last Modified On: Mon Jul 20 10:18:48 2015
+# Update Count    : 41
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
@@ -16,17 +16,13 @@ use utf8;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_monthky 0.01 );
+my ($my_name, $my_version) = qw( growatt_daily 0.02 );
 
 ################ Command line parameters ################
 
 use Getopt::Long 2.13;
 
 # Command line options.
-my $gwversion = 3;		# Growatt WiFi module version
-my $print = 1;			# default: print report
-my $export = 0;			# generate CSV
-my $day = 0;			# processing one day's worth of files
 my $verbose = 0;		# verbose processing
 
 # Development options (not shown with -help).
@@ -162,9 +158,6 @@ sub app_options {
     return unless @ARGV > 0;
 
     if ( !GetOptions(
-		     'print!'	=> sub { $print = $_[1]; $export = 0 },
-		     'csv!'	=> sub { $export = $_[1]; $print = 0 },
-		     'day'	=> \$day,
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
@@ -186,10 +179,6 @@ sub app_usage {
     app_ident();
     print STDERR <<EndOfUsage;
 Usage: $0 [options] [file ...]
-    --version=NN		Growatt Wifi module version, default 3.
-    --[no]print			generate printed report (default)
-    --[no]csv			generate CSV data
-    --day			processing data of a single day
     --help			this message
     --ident			show identification
     --verbose			verbose information
