@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Thu Jul  2 14:37:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Jul 19 16:55:30 2015
-# Update Count    : 163
+# Last Modified On: Wed Jul 22 20:24:02 2015
+# Update Count    : 165
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
@@ -16,7 +16,7 @@ use utf8;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_data 0.05 );
+my ($my_name, $my_version) = qw( growatt_data 0.06 );
 
 ################ Command line parameters ################
 
@@ -42,6 +42,7 @@ $trace |= ($debug || $test);
 
 ################ Presets ################
 
+# Simple field names for the code.
 my @fields = qw( SampleDate SampleTime
 		 DataLoggerId InverterId InvStat InvStattxt
 		 Ppv Vpv1 Ipv1 Ppv1 Vpv2 Ipv2 Ppv2
@@ -53,6 +54,8 @@ my @fields = qw( SampleDate SampleTime
 		 Epv1today Epv1total Epv2today Epv2total Epvtotal
 		 Rac ERactoday ERactotal );
 
+# Map to full field names according to Growatt data sheets.
+# Note some data is not in the sheets.
 my %csvmap = ( # SampleDate    => "Time",
 	       # SampleTime    => "Time",
 	       # DataLoggerId  => undef,
