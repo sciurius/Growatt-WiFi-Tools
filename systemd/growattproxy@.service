@@ -1,0 +1,11 @@
+[Unit]
+Description=Growatt Per-Connection Proxy Server
+
+[Service]
+SyslogIdentifier=groprx
+User=jv
+Group=jv
+WorkingDirectory=/home/jv/tmp/
+ExecStart=-/usr/bin/perl /home/jv/wrk/Growatt/scripts/growatt_proxy.pl --debug --systemd
+StandardInput=socket
+StandardOutput=syslog

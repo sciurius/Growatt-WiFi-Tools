@@ -1,0 +1,9 @@
+[Unit]
+Description=Growatt Proxy Socket
+
+[Socket]
+ListenStream=5279
+Accept=yes
+
+[Install]
+WantedBy=sockets.target

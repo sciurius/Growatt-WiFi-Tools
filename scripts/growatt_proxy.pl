@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Fri Jul 17 23:57:26 2015
-# Update Count    : 99
+# Last Modified On: Wed Jul 22 20:18:37 2015
+# Update Count    : 140
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -56,7 +56,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.19 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.20 );
 
 ################ Command line parameters ################
 
@@ -68,8 +68,9 @@ my $local_host  = "groprx.squirrel.nl";	# proxy server (this hist)
 my $local_port  = 5279;		# local port. DO NOT CHANGE
 my $remote_host = "server.growatt.com";		# remote server. DO NOT CHANGE
 my $remote_port = 5279;		# remote port. DO NOT CHANGE
-my $timeout = 1800;		# 30 minutes
+my $timeout;			# 30 minutes
 my $verbose = 0;		# verbose processing
+my $sock_act = 0;		# running through inetd or systemd
 
 # Development options (not shown with -help).
 my $debug = 0;			# debugging
@@ -80,6 +81,7 @@ my $test = 0;			# test mode.
 app_options();
 
 # Post-processing.
+$timeout //= $sock_act ? 300 : 1800;
 $trace |= ($debug || $test);
 
 ################ Presets ################
@@ -90,6 +92,7 @@ my $TMPDIR = $ENV{TMPDIR} || $ENV{TEMP} || '/usr/tmp';
 
 use IO::Socket::INET;
 use IO::Select;
+use IO::Handle;
 use Fcntl;
 use Data::Hexify;
 
@@ -106,16 +109,41 @@ my $remote_socket;
 $debug = 1;			# for the time being
 $| = 1;				# flush standard output
 
-print( ts(), " Starting Growatt proxy server version $my_version",
-       " on 0.0.0.0:$local_port\n" );
-my $server = new_server( '0.0.0.0', $local_port );
-$ioset->add($server);
+my $server;
+if ( $sock_act ) {
+    my @tm = localtime(time);
+    open( STDOUT, '>>',
+	  sprintf( "%04d%02d%02d.log", 1900+$tm[5], 1+$tm[4], $tm[3] ) );
+    print( ts(), " Starting Growatt proxy server version $my_version",
+	   " on stdin\n" );
+    $server = IO::Socket::INET->new;
+    $server->fdopen( 0, 'r' );
+    print( ts(), " Connection accepted from ",
+	   client_ip($server), "\n") if $debug;
+    my $remote = new_conn( $remote_host, $remote_port );
+    print( ts(), " Connection to $remote_host (",
+	   $remote->peerhost, ") port $remote_port established\n") if $debug;
+
+    $ioset->add($server);
+    $ioset->add($remote);
+
+    $socket_map{$server} = $remote;
+    $socket_map{$remote} = $server;
+    $remote_socket = $remote;
+}
+else {
+    print( ts(), " Starting Growatt proxy server version $my_version",
+	   " on 0.0.0.0:$local_port\n" );
+    $server = new_server( '0.0.0.0', $local_port );
+    $ioset->add($server);
+}
+
 
 my $busy;
 while ( 1 ) {
     my @sockets = $ioset->can_read($timeout);
     unless ( @sockets ) {
-	if ( $busy || -f $sentinel ) {
+	if ( !$sock_act && ( $busy || -f $sentinel ) ) {
 	    if ( open( my $fd, '<', $sentinel ) ) {
 		print <$fd>;
 		close($fd);
@@ -126,6 +154,10 @@ while ( 1 ) {
 	}
 	else {
 	    print( "==== ", ts(), " TIMEOUT ====\n\n" );
+	    if ( $sock_act ) {
+		unlink($sentinel);
+		exit 0;
+	    }
 	    next;
 	}
 	#close_all();
@@ -133,7 +165,7 @@ while ( 1 ) {
     }
     $busy = 1;
     for my $socket ( @sockets ) {
-        if ( $socket == $server ) {
+        if ( !$sock_act && $socket == $server ) {
             new_connection( $server, $remote_host, $remote_port );
         }
         else {
@@ -148,6 +180,10 @@ while ( 1 ) {
             }
             else {
                 close_connection($socket);
+		if ( $sock_act ) {
+		    print( ts(), " Server terminating\n\n" );
+		    exit 0;
+		}
             }
         }
     }
@@ -238,7 +274,7 @@ sub close_all {
 
 sub client_ip {
     my $client = shift;
-    return $client->peerhost;
+    return ( eval { $client->peerhost } || $ENV{REMOTE_ADDR} || "?.?.?.?" );
 }
 
 sub preprocess_package {
@@ -375,9 +411,10 @@ sub app_options {
     my $remote;
 
     if ( !GetOptions(
-		     'listen'   => \$local_port,
+		     'listen=i' => \$local_port,
 		     'remote'   => \$remote,
 		     'timeout=i' => \$timeout,
+		     'inetd|systemd' => \$sock_act,
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
@@ -407,7 +444,7 @@ sub app_usage {
 Usage: $0 [options]
     --listen=NNNN	Local port to listen to (must be $local_port)
     --remote=XXXX:NNNN	Remote server name and port (must be $remote_host:$remote_port)
-    --timeout=NNN	Timeout (default: $timeout seconds)
+    --timeout=NNN	Timeout
     --help		This message
     --ident		Shows identification
     --verbose		More verbose information.
