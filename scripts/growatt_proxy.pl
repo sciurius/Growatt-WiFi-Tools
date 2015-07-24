@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Wed Jul 22 20:18:37 2015
-# Update Count    : 140
+# Last Modified On: Fri Jul 24 21:59:33 2015
+# Update Count    : 144
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -44,6 +44,9 @@
 # 20150703140004.dat
 # ... and so on ...
 #
+# Alternatively, use systemd (or inetd, untested) to start the proxy
+# server.
+#
 ################################################################
 
 use warnings;
@@ -56,7 +59,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.20 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.21 );
 
 ################ Command line parameters ################
 
@@ -367,6 +370,7 @@ sub postprocess_package {
 	    my $fn = $ts;
 	    $fn =~ s/[- :]//g;
 	    $fn .= ".dat";
+	    $tag .= " DATA";
 
 	    my $fd;
 	    $data = $prefix.$data;
@@ -388,6 +392,7 @@ sub postprocess_package {
 
 	# Unhandled.
 	$data = $prefix.$data;
+	$tag .= " AHOY" if $type == 0x0103 && $length > 210;
 	print( "==== $ts $tag ====\n", Hexify(\$data), "\n" );
 	return 1;
     };
@@ -445,9 +450,10 @@ Usage: $0 [options]
     --listen=NNNN	Local port to listen to (must be $local_port)
     --remote=XXXX:NNNN	Remote server name and port (must be $remote_host:$remote_port)
     --timeout=NNN	Timeout
+    --inetd  --systemd	Running from inetd/systemd
     --help		This message
     --ident		Shows identification
-    --verbose		More verbose information.
+    --verbose		More verbose information
 
 EndOfUsage
     exit $exit if defined $exit && $exit != 0;
