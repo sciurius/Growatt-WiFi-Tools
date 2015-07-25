@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Fri Jul 24 22:04:15 2015
-# Update Count    : 172
+# Last Modified On: Sat Jul 25 20:05:48 2015
+# Update Count    : 182
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -59,7 +59,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.20 );
+my ($my_name, $my_version) = qw( growatt_server 0.21 );
 
 ################ Command line parameters ################
 
@@ -165,8 +165,10 @@ while ( 1 ) {
             if ( $len ) {
 		$buffer = preprocess_package( $socket, $buffer );
 		$buffer = process_package( $socket, $buffer );
-                $remote->syswrite($buffer);
-		postprocess_package( $socket, $buffer );
+		if ( defined($buffer) ) {
+		    $remote->syswrite($buffer);
+		    postprocess_package( $socket, $buffer );
+		}
             }
             else {
                 close_connection($socket);
@@ -255,6 +257,8 @@ sub preprocess_package {
     return $buffer;
 }
 
+my $identified;
+
 sub process_package {
     my ( $socket, $buffer ) = @_;
 
@@ -285,7 +289,7 @@ sub process_package {
 	# AHOY
 	print( "==== $ts $tag AHOY ====\n", Hexify(\$buffer), "\n" ) if $debug;
 	$data_logger = substr( $data, 0, 10 );
-	return m_ack();
+	return $identified ? m_ack() : m_nack_identify();
     }
 
     # Dump energy reports to individual files.
@@ -311,6 +315,13 @@ sub process_package {
 	print( "==== $ts $tag ====\n", Hexify(\$buffer), "\n" ) if $debug;
 
 	return m_ack();
+    }
+
+    # Ignore config messages.
+    if ( $type == 0x0119 ) {
+	$identified++;
+	print( "==== $ts $tag ====\n", Hexify(\$buffer), "\n" ) if $debug;
+	return;
     }
 
     # Unhandled.
@@ -431,6 +442,15 @@ sub m_ack {
 
 sub m_nack {
     pack( "nnnnC", 1, 2, 3, 0x0103, 0 );
+}
+
+sub m_nack_identify {
+    my ( $dl ) = @_;
+    $dl //= $data_logger;
+    m_nack() .
+      pack( "n[4]A[10]n[2]",
+	    1, 2, 6+length($dl), 0x0119,
+	    $dl, 4, 0x15 );
 }
 
 ################ Command line options ################
