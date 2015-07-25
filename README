@@ -6,16 +6,37 @@ module.
 NOTE: You may need to adjust paths to scripts and files, depending on
 your installation.
 
-2. Start proxy server (see also scripts/run_proxy.sh):
+2. Start either the proxy server, or the standalone server.
+
+2a. Start proxy server:
 
    perl growatt_proxy.pl --debug
 
    make sure it keeps running!
 
-   The script run_proxy.sh may be helpful.
+   There are some systemd/growattproxy* files to deploy the proxy
+   server using systemd.
+
+   The proxy server will intercept all communication between the WiFi
+   module and the Growatt server, and copy the energy data packages to
+   local disk.
+
+2b. Start standalone server:
+
+   perl growatt_server.pl --debug
+
+   make sure it keeps running!
+
+   There are some systemd/growattserver* files to deploy the proxy
+   server using systemd.
+
+   The standalone server is like the proxy server, but does not use
+   the Growatt server. It just copies the energy data packages to
+   local disk.
 
 3. In the Growatt WiFi module, set the server to the system running
-   the proxy server. A reboot of the module is neccessary.
+   the proxy or standalone server. A reboot of the module is
+   neccessary.
 
    NOTICE: Currently there's a hard-wired fix in the proxy server to
    misinform the Growatt server that it is sending data to
@@ -27,6 +48,8 @@ your installation.
 
    I hope to remove this 'fix' when Growatt finally switches their
    servers to another location.
+
+   The standalone server doesn't have this 'fix' code.
 
 4. In the directory where the proxy server is running small data files
    will be created:
