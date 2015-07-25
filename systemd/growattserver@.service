@@ -1,0 +1,11 @@
+[Unit]
+Description=Growatt Per-Connection Server
+
+[Service]
+SyslogIdentifier=grosrv
+User=jv
+Group=jv
+WorkingDirectory=/home/jv/tmp/
+ExecStart=-/usr/bin/perl /home/jv/wrk/Growatt/scripts/growatt_server.pl --debug --systemd
+StandardInput=socket
+StandardOutput=syslog
