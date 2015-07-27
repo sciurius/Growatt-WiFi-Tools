@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Thu Jul  2 14:37:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Wed Jul 22 20:24:02 2015
-# Update Count    : 165
+# Last Modified On: Mon Jul 27 19:30:12 2015
+# Update Count    : 166
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
@@ -217,6 +217,8 @@ sub disassemble {
 
     $off += 5;
     $off += 6 if $gwversion >= 2;	# for V2.0.0.0 and up
+					# verified up to 4.0.0.0
+
     my $off0 = $off - 15;		# for assertion
 
     $a{InvStat} = $up->(2);
