@@ -55,7 +55,7 @@ set output sprintf( imagefile, imagecnt ); imagecnt = imagecnt + 1
 set format y2 "%g kWh"
 set y2tics
 set autoscale y2
-set key left
+set key left reverse Left
 
 # The daily accum values are not useful, since they are reset during
 # the day. So use the total energy and subtract the initial value.
@@ -63,11 +63,11 @@ E_init = `perl -an -F, -e '$. == 2 && do { print $F[23];exit }' @datafile`
 
 plot datafile \
     using "Time":(column("Eac_total(kWh)")-E_init) \
-        axes x1y2  with lines lw 3 title "Total (kWh)", \
+        axes x1y2  with lines lw 3 title "Totaal opgewekte energie (kWh)", \
     '' using "Time":(column("Ppv1(W)")/1000)+(column("Ppv2(W)")/1000) \
-	with lines lw 2 title "Power (kW)", \
+	with lines lw 2 title "Opgewekt vermogen (kW)", \
     '' using "Time":(column("Ppv1(W)")/1000) \
-        with lines title "PV1 (kW)", \
+        with lines title "Opgewekt door PV1 (kW)", \
     '' using "Time":(column("Ppv2(W)")/1000) \
-        with lines title "PV2 (kW)" \
+        with lines title "Opgewekt door PV2 (kW)"
 
