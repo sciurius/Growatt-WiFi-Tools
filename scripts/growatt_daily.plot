@@ -52,6 +52,7 @@ mend = `perl -an -e 'eof && do { print q{"},$F[0],q{"};exit }' @datafile`
 set xrange [ strptime('%Y-%m-%d',mstart)-daysecs:strptime('%Y-%m-%d',mend)+daysecs]
 set xtics mstart,daysecs,mend
 unset mxtics
+set key below
 
 set title strftime("%B %Y",strptime('%Y-%m-%d',mend))
 
