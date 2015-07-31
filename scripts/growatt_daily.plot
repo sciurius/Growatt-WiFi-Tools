@@ -63,5 +63,5 @@ plot datafile \
      using "Time":(column("Epv2")+column("Epv1")) \
      with boxes lc rgb 'green' title "PV2 (kWh)", \
      '' \
-     using "Time":(column("Epv1")) \
+     using "Time":"Epv1" \
      with boxes lc rgb 'yellow' title "PV1 (kWh)"
