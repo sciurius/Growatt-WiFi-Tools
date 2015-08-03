@@ -54,7 +54,14 @@ set xtics mstart,daysecs,mend
 unset mxtics
 set key below
 
-set title strftime("%B %Y",strptime('%Y-%m-%d',mend))
+t1 = strftime("%B %Y",strptime('%Y-%m-%d',mstart))
+t2 = strftime("%B %Y",strptime('%Y-%m-%d',mend))
+if ( t1 eq t2 ) {
+   set title t1
+}
+else {
+   set title t1 . " — " . t2
+}
 
 plot datafile \
      using "Time":"Eac" \
