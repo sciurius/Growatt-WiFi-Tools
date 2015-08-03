@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Thu Jul  2 14:37:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Jul 27 19:30:12 2015
-# Update Count    : 166
+# Last Modified On: Mon Aug  3 17:28:09 2015
+# Update Count    : 169
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
@@ -276,6 +276,8 @@ sub disassemble {
 }
 
 use Text::CSV;
+# Text::CSV does not understand quote_space.
+use Text::CSV_XS;
 use IO::Wrap;
 my $csv;
 
@@ -340,56 +342,56 @@ sub print_data {
 
     printf( "%-11s %8.1f %-10s",   "E_Today",     $a{E_Today},   "kWh" );
     printf( "%-11s %8.1f %-10s",   "E_Total",     $a{E_Total},   "kWh" );
-    printf( "%-11s %8.1f %-10s\n", "Total time",  $a{TallH},     "hrs" );
+    printf( "%-11s %8.1f %-3s\n",  "Total time",  $a{TallH},     "hrs" );
     print( "-" x 87, "\n" );
 
     printf( "%-11s %8.1f %-10s",   "Ppv",         $a{Ppv},       " W" );
     printf( "%-11s %8.1f %-10s",   "Pac",         $a{Pac},       " W" );
-    printf( "%-11s %8.2f %-10s\n", "Fac",         $a{Fac},       "Hz" );
+    printf( "%-11s %8.2f %-3s\n",  "Fac",         $a{Fac},       "Hz" );
     print( "-" x 87, "\n" );
 
     printf( "%-11s %8.1f %-10s",   "Vpv1",        $a{Vpv1},      " V" );
-    printf( "%-11s %8.1f %-10s\n", "Vpv2",        $a{Vpv2},      " V" );
+    printf( "%-11s %8.1f %-3s\n",  "Vpv2",        $a{Vpv2},      " V" );
     printf( "%-11s %8.1f %-10s",   "Ipv1",        $a{Ipv1},      " A" );
-    printf( "%-11s %8.1f %-10s\n", "Ipv2",        $a{Ipv2},      " A" );
+    printf( "%-11s %8.1f %-3s\n",  "Ipv2",        $a{Ipv2},      " A" );
     printf( "%-11s %8.1f %-10s",   "Ppv1",        $a{Ppv1},      " W" );
-    printf( "%-11s %8.1f %-10s\n", "Ppv2",        $a{Ppv2},      " W" );
+    printf( "%-11s %8.1f %-3s\n",  "Ppv2",        $a{Ppv2},      " W" );
     print( "-" x 87, "\n" );
 
     printf( "%-11s %8.1f %-10s",   "Vac1",        $a{Vac1},      " V" );
     printf( "%-11s %8.1f %-10s",   "Vac2",        $a{Vac2},      " V" );
-    printf( "%-11s %8.1f %-10s\n", "Vac3",        $a{Vac3},      " V" );
+    printf( "%-11s %8.1f %-3s\n",  "Vac3",        $a{Vac3},      " V" );
     printf( "%-11s %8.1f %-10s",   "Iac1",        $a{Iac1},      " A" );
     printf( "%-11s %8.1f %-10s",   "Iac2",        $a{Iac2},      " A" );
-    printf( "%-11s %8.1f %-10s\n", "Iac2",        $a{Iac3},      " A" );
+    printf( "%-11s %8.1f %-3s\n",  "Iac2",        $a{Iac3},      " A" );
     printf( "%-11s %8.1f %-10s",   "Pac1",        $a{Pac1},      " W" );
     printf( "%-11s %8.1f %-10s",   "Pac2",        $a{Pac2},      " W" );
-    printf( "%-11s %8.1f %-10s\n", "Pac2",        $a{Pac3},      " W" );
+    printf( "%-11s %8.1f %-3s\n",  "Pac2",        $a{Pac3},      " W" );
     print( "-" x 87, "\n" );
 
-    printf( "%-11s %8.1f %-10s\n", "Epvtotal",    $a{Epvtotal},  "kW" );
-    printf( "%-11s %8.1f %-10s",   "Epv1today",   $a{Epv1today}, "kW" );
-    printf( "%-11s %8.1f %-10s\n", "Epv2today",   $a{Epv2today}, "kW" );
-    printf( "%-11s %8.1f %-10s",   "Epv1total",   $a{Epv1total}, "kW" );
-    printf( "%-11s %8.1f %-10s\n", "Epv2total",   $a{Epv2total}, "kW" );
+    printf( "%-11s %8.1f %-3s\n",  "Epvtotal",    $a{Epvtotal},  "kWh" );
+    printf( "%-11s %8.1f %-10s",   "Epv1today",   $a{Epv1today}, "kWh" );
+    printf( "%-11s %8.1f %-3s\n",  "Epv2today",   $a{Epv2today}, "kWh" );
+    printf( "%-11s %8.1f %-10s",   "Epv1total",   $a{Epv1total}, "kWh" );
+    printf( "%-11s %8.1f %-3s\n",  "Epv2total",   $a{Epv2total}, "kWh" );
     print( "-" x 87, "\n" );
 
     printf( "%-11s %8.1f %-10s",   "ISO Fault",   $a{ISOF},      " V" );
     printf( "%-11s %8.1f %-10s",   "Vpvfault",    $a{Vpvfault},  " V" );
-    printf( "%-11s %8.1f %-10s\n", "Tempfault",   $a{Tmpfault},  " C" );
+    printf( "%-11s %8.1f %-3s\n",  "Tempfault",   $a{Tmpfault},  " C" );
     printf( "%-11s %8.1f %-10s",   "GFCI Fault",  $a{GFCIF},     "mA" );
     printf( "%-11s %8.1f %-10s",   "Vacfault",    $a{Vacfault},  " V" );
     printf( "%-11s     0x%02X\n",  "Faultcode",   $a{Faultcode}      );
     printf( "%-11s %8.1f %-10s",   "DCI Fault",   $a{DCIF},      " A" );
-    printf( "%-11s %9.2f %-10s\n", "Facfault",    $a{Facfault},  "Hz" );
+    printf( "%-11s %9.2f %-3s\n",  "Facfault",    $a{Facfault},  "Hz" );
     print( "-" x 87, "\n" );
 
     printf( "%-11s %8.1f %-10s",   "IPMtemp",     $a{IPMtemp},   " C" );
-    printf( "%-11s %8.1f %-10s\n", "Rac",         $a{Rac},       "Var" );
+    printf( "%-11s %8.1f %-3s\n",  "Rac",         $a{Rac},       "Var" );
     printf( "%-11s %8.1f %-10s",   "Pbusvolt",    $a{Pbusvolt},  " V" );
-    printf( "%-11s %8.1f %-10s\n", "E_Rac_today", $a{ERactoday}, "Var" );
+    printf( "%-11s %8.1f %-3s\n",  "E_Rac_today", $a{ERactoday}, "Var" );
     printf( "%-11s %8.1f %-10s",   "Nbusvolt",    $a{Nbusvolt},  " V" );
-    printf( "%-11s %8.1f %-10s\n", "E_Rac_total", $a{ERactotal}, "Var" );
+    printf( "%-11s %8.1f %-3s\n",  "E_Rac_total", $a{ERactotal}, "Var" );
     print( "-" x 87, "\n" );
 
 }
