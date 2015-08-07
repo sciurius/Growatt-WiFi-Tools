@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Thu Jul  2 14:37:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Aug  3 17:28:09 2015
-# Update Count    : 169
+# Last Modified On: Fri Aug  7 21:47:59 2015
+# Update Count    : 172
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
@@ -16,7 +16,7 @@ use utf8;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_data 0.06 );
+my ($my_name, $my_version) = qw( growatt_data 0.07 );
 
 ################ Command line parameters ################
 
@@ -243,8 +243,7 @@ sub disassemble {
     $a{Pac3} = $up->(4, 1);
     $a{E_Today} = sprintf("%.2f", $up->(4) / 10);
     $a{E_Total} = sprintf("%.2f", $up->(4) / 10);
-    $a{Tall} = $up->(4);
-    $a{TallH} = sprintf("%.2f", $a{Tall}/(60*60*2));
+    $a{Tall} = sprintf("%.2f", $up->(4) / (60*60*2));
     $a{Tmp} = $up->(2, 1);
     $a{ISOF} = $up->(2, 1);
     $a{GFCIF} = sprintf("%.2f", up($data, $off, 2)/10 ); $off += 2;
@@ -332,17 +331,17 @@ sub print_data {
     my ( $a ) = @_;
     my %a = %$a;
 
-    printf( "Growatt Inverter serial   : %-20s", $a{InverterId} );
-    printf( "      Capture sample date : %s\n", $a{SampleDate} );
-    printf( "Growatt Wifi Module serial: %-20s", $a{DataLoggerId} );
-    printf( "      Capture sample time : %s\n", $a{SampleTime} );
+    printf( "Growatt Inverter serial   : %-20s",  $a{InverterId} );
+    printf( "      Capture sample date : %s\n",   $a{SampleDate} );
+    printf( "Growatt Wifi Module serial: %-20s",  $a{DataLoggerId} );
+    printf( "      Capture sample time : %s\n",   $a{SampleTime} );
     printf( "Growatt Inverter status   : %-20s", "$a{InvStat} ($a{InvStattxt})" );
     printf( "      Growatt temperature : %6.1f C\n", $a{Tmp} );
     print( "-" x 87, "\n" );
 
     printf( "%-11s %8.1f %-10s",   "E_Today",     $a{E_Today},   "kWh" );
     printf( "%-11s %8.1f %-10s",   "E_Total",     $a{E_Total},   "kWh" );
-    printf( "%-11s %8.1f %-3s\n",  "Total time",  $a{TallH},     "hrs" );
+    printf( "%-11s %8.1f %-3s\n",  "Total time",  $a{Tall},      "hrs" );
     print( "-" x 87, "\n" );
 
     printf( "%-11s %8.1f %-10s",   "Ppv",         $a{Ppv},       " W" );
