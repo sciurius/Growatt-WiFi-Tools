@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Fri Jul 24 21:59:33 2015
-# Update Count    : 144
+# Last Modified On: Sat Aug 22 22:43:34 2015
+# Update Count    : 145
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -59,7 +59,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.21 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.22 );
 
 ################ Command line parameters ################
 
@@ -329,10 +329,10 @@ sub postprocess_package {
 	    return 1;
 	}
 
-	# ACK.
+	# ACK4.
 	if ( $type == 0x0104 && $length == 3 && length($buffer) == 0 ) {
 
-	    printf( "==== %s %s ACK %02x ====\n\n",
+	    printf( "==== %s %s ACK 01 04 %02x ====\n\n",
 		    $ts, $tag,
 		    unpack( "C", substr( $data, 0, 1 ) ) );
 
@@ -355,10 +355,10 @@ sub postprocess_package {
 	    return 1;
 	}
 
-	# NACK.
+	# ACK3 .
 	if ( $type == 0x0103 && $length == 3 ) {
 
-	    printf( "==== %s %s NACK %02x ====\n\n",
+	    printf( "==== %s %s ACK 01 03 %02x ====\n\n",
 		    $ts, $tag,
 		    unpack( "C", substr( $data, 0, 1 ) ) );
 	    return 1;

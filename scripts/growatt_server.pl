@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sat Jul 25 20:05:48 2015
-# Update Count    : 182
+# Last Modified On: Sat Aug 22 22:42:23 2015
+# Update Count    : 183
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -59,7 +59,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.21 );
+my ($my_name, $my_version) = qw( growatt_server 0.22 );
 
 ################ Command line parameters ################
 
@@ -269,7 +269,7 @@ sub process_package {
     unless ( $buffer =~ /^\x00\x01\x00\x02(..)(..)/ ) {
 	# Error?
 	print( "==== $ts $tag ====\n", Hexify(\$buffer), "\n" );
-	return m_nack();
+	return m_ack3();
     }
 
     # Detach this message from the package.
@@ -289,7 +289,7 @@ sub process_package {
 	# AHOY
 	print( "==== $ts $tag AHOY ====\n", Hexify(\$buffer), "\n" ) if $debug;
 	$data_logger = substr( $data, 0, 10 );
-	return $identified ? m_ack() : m_nack_identify();
+	return $identified ? m_ack3() : m_ack3_identify();
     }
 
     # Dump energy reports to individual files.
@@ -314,7 +314,7 @@ sub process_package {
 	# Dump message in hex.
 	print( "==== $ts $tag ====\n", Hexify(\$buffer), "\n" ) if $debug;
 
-	return m_ack();
+	return m_ack4();
     }
 
     # Ignore config messages.
@@ -326,7 +326,7 @@ sub process_package {
 
     # Unhandled.
     print( "==== $ts $tag ====\n", Hexify(\$buffer), "\n" ) if $debug;
-    return m_nack();
+    return m_ack3();
 
 }
 
@@ -358,7 +358,7 @@ sub postprocess_package {
 	# ACK.
 	if ( $type == 0x0104 && $length == 3 && length($buffer) == 0 ) {
 
-	    printf( "==== %s %s ACK %02x ====\n\n",
+	    printf( "==== %s %s ACK 01 04 %02x ====\n\n",
 		    $ts, $tag,
 		    unpack( "C", substr( $data, 0, 1 ) ) ) if $debug;
 
@@ -384,7 +384,7 @@ sub postprocess_package {
 	# NACK.
 	if ( $type == 0x0103 && $length == 3 ) {
 
-	    printf( "==== %s %s NACK %02x ====\n\n",
+	    printf( "==== %s %s ACK 01 03 %02x ====\n\n",
 		    $ts, $tag,
 		    unpack( "C", substr( $data, 0, 1 ) ) ) if $debug;
 	    return 1;
@@ -436,18 +436,18 @@ sub m_ping {
     pack( "nnnn", 1, 2, 2+length($dl), 0x0116 ) . $dl;
 }
 
-sub m_ack {
+sub m_ack4 {
     pack( "nnnnC", 1, 2, 3, 0x0104, 0 );
 }
 
-sub m_nack {
+sub m_ack3 {
     pack( "nnnnC", 1, 2, 3, 0x0103, 0 );
 }
 
-sub m_nack_identify {
+sub m_ack3_identify {
     my ( $dl ) = @_;
     $dl //= $data_logger;
-    m_nack() .
+    m_ack3() .
       pack( "n[4]A[10]n[2]",
 	    1, 2, 6+length($dl), 0x0119,
 	    $dl, 4, 0x15 );
