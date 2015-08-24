@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sat Aug 22 22:43:34 2015
-# Update Count    : 145
+# Last Modified On: Sun Aug 23 23:14:15 2015
+# Update Count    : 163
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -59,7 +59,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.22 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.23 );
 
 ################ Command line parameters ################
 
@@ -177,9 +177,11 @@ while ( 1 ) {
             my $buffer;
             my $len = $socket->sysread($buffer, 4096);
             if ( $len ) {
-		$buffer = preprocess_package( $socket, $buffer );
-                $remote->syswrite($buffer);
-		postprocess_package( $socket, $buffer );
+		while ( my $msg = split_msg( \$buffer ) ) {
+		    $msg = preprocess_msg( $socket, $msg );
+		    $remote->syswrite($msg);
+		    postprocess_msg( $socket, $msg );
+		}
             }
             else {
                 close_connection($socket);
@@ -280,130 +282,149 @@ sub client_ip {
     return ( eval { $client->peerhost } || $ENV{REMOTE_ADDR} || "?.?.?.?" );
 }
 
-sub preprocess_package {
-    my ( $socket, $buffer ) = @_;
+sub split_msg {
+    my ( $bufref ) = @_;
 
-    my $tag = $socket != $remote_socket ? "client" : "server";
-
-    my $rhp = qr/$remote_host/;
-    my $lhp = qr/$local_host/;
-    my $fixed = $buffer;
-    my $ts = ts();
-
-    # Pretend that we're listening to their server.
-    $buffer =~ s/(\x00(?:\x13|\x11)\x00\x12)$lhp/$1$remote_host/g;
-    # Refuse to change the server.
-    $buffer =~ s/(\x00\x13\x00\x12)$rhp/$1$local_host/g
-      if $fixed eq $buffer;
-
-    if ( $fixed ne $buffer ) {
-	print( "==== $ts $tag FIXED ====\n", Hexify(\$fixed), "\n",
-	       Hexify(\$buffer), "\n");
+    if ( $$bufref =~ /^\x00\x01\x00\x02(..)/ ) {
+	my $length = unpack( "n", $1 );
+	return substr( $$bufref, 0, $length+6, '' );
     }
-
-    return $buffer;
+    return;
 }
 
-sub postprocess_package {
-    my ( $socket, $buffer ) = @_;
+sub preprocess_msg {
+    my ( $socket, $msg ) = @_;
+
+    my $tag = $socket != $remote_socket ? "client" : "server";
+
+    my $orig = $msg;
+    my $ts = ts();
+    my $a = disassemble($msg);
+
+    if ( $a->{type} eq 0x0119 ) {	# query settings
+	if ( $a->{data} =~ /^(.{10}\x00(?:\x11|\x13))/ ) {
+	    # Fake items 11 and 13 to reflect the growatt server.
+	    $a->{data} = $1
+	      . pack('n', length($remote_host)) . $remote_host;
+	    $msg = assemble($a);
+	}
+    }
+    elsif ( $a->{type} eq 0x0118 ) {	# update settings
+	if ( $a->{data} =~ /^(.{10}\x00\x13)/ ) {
+	    # Refuse to change config item 13.
+	    $a->{data} = $1
+	      . pack('n', length($local_host)) . $local_host;
+	    $msg = assemble($a);
+	}
+    }
+
+    if ( $orig ne $msg ) {
+	print( "==== $ts $tag NEEDFIX ====\n", Hexify(\$orig), "\n",
+	       "==== $ts $tag FIXED ====\n". Hexify(\$msg), "\n");
+    }
+
+    return $msg;
+}
+
+sub disassemble {
+    my ( $buffer ) = @_;
+    return unless $buffer =~ /^\x00\x01\x00\x02(..)(..)/;
+
+    my $length = unpack( "n", $1 );
+    return { length => $length,
+	     type   => unpack( "n", $2 ),
+	     data   => substr( $buffer, 8, $length-2 ),
+	     prefix => substr( $buffer, 0, 8 ) };
+}
+
+sub assemble {
+    my ( $msg ) = @_;
+
+    # Only data and type is used.
+    return pack( "n4", 1, 2, 2+length($msg->{data}), $msg->{type} )
+      . $msg->{data};
+}
+
+sub postprocess_msg {
+    my ( $socket, $msg ) = @_;
 
     my $tag = $socket != $remote_socket ? "client" : "server";
 
     my $ts = ts();
-    my $fail = 0;
 
-    my $handler = sub {
-	$fail++, return unless $buffer =~ /^\x00\x01\x00\x02(..)(..)/;
-
-	# Detach this message from the package.
-	my $length = unpack( "n", $1 );
-	my $type   = unpack( "n", $2 );
-	my $data   = substr( $buffer, 8, $length-2 );
-	my $prefix = substr( $buffer, 0, 8 );
-	$buffer    = substr( $buffer, 6 + $length );
-
-	# PING.
-	if ( $type == 0x0116 && $length == 12 ) {
-	    print( "==== $ts $tag PING ",
-		   substr( $data, 0, 10 ), " ====\n\n" );
-	    return 1;
-	}
-
-	# ACK4.
-	if ( $type == 0x0104 && $length == 3 && length($buffer) == 0 ) {
-
-	    printf( "==== %s %s ACK 01 04 %02x ====\n\n",
-		    $ts, $tag,
-		    unpack( "C", substr( $data, 0, 1 ) ) );
-
-	    # For development: If there's a file $sentinel in the current
-	    # directory, stop this instance of the server.
-	    # When invoked via the "run_server.sh" script this will
-	    # immedeately start a new server instance.
-	    # This can be used to upgrade to a new version of the
-	    # server.
-	    if ( -f $sentinel ) {
-		print( "==== $ts Reloading ====\n" );
-		open( my $fd, '<', $sentinel );
-		print <$fd>;
-		close($fd);
-		unlink( $sentinel );
-		print( "\n" );
-		exit 0;
-	    }
-
-	    return 1;
-	}
-
-	# ACK3 .
-	if ( $type == 0x0103 && $length == 3 ) {
-
-	    printf( "==== %s %s ACK 01 03 %02x ====\n\n",
-		    $ts, $tag,
-		    unpack( "C", substr( $data, 0, 1 ) ) );
-	    return 1;
-	}
-
-	# Dump energy reports to individual files.
-	if ( $type == 0x0104 && $length > 210 ) {
-
-	    my $fn = $ts;
-	    $fn =~ s/[- :]//g;
-	    $fn .= ".dat";
-	    $tag .= " DATA";
-
-	    my $fd;
-	    $data = $prefix.$data;
-
-	    if ( sysopen( $fd, $fn, O_WRONLY|O_CREAT )
-		 and syswrite( $fd, $data ) == length($data)
-		 and close($fd) ) {
-		# OK
-	    }
-	    else {
-		$tag .= " ERROR $fn: $!";
-	    }
-
-	    # Dump message in hex.
-	    print( "==== $ts $tag ====\n", Hexify(\$data), "\n" );
-
-	    return 1;
-	}
-
-	# Unhandled.
-	$data = $prefix.$data;
-	$tag .= " AHOY" if $type == 0x0103 && $length > 210;
-	print( "==== $ts $tag ====\n", Hexify(\$data), "\n" );
-	return 1;
-    };
-
-    # Process all messages in the buffer.
-    while ( length($buffer) && !$fail ) {
-	next if $handler->();
-
-	# Dump unhandled messages in hex.
-	print( "==== $ts $tag ====\n", Hexify(\$buffer), "\n" );
+    my $m = disassemble($msg);
+    unless ( $m ) {
+	print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" );
+	return;
     }
+
+
+    # PING.
+    if ( $m->{type} == 0x0116 && $m->{length} == 12 ) {
+	print( "==== $ts $tag PING ",
+	       substr( $m->{data}, 0, 10 ), " ====\n\n" );
+	return;
+    }
+
+    # ACK.
+    if ( $m->{length} == 3
+	 && ( $m->{type} == 0x0104 || $m->{type} == 0x0103 ) ) {
+
+	printf( "==== %s %s ACK %04x %02x ====\n\n",
+		$ts, $tag, $m->{type},
+		unpack( "C", substr( $m->{data}, 0, 1 ) ) );
+
+	# For development: If there's a file $sentinel in the current
+	# directory, stop this instance of the server.
+	# When invoked via the "run_server.sh" script this will
+	# immedeately start a new server instance.
+	# This can be used to upgrade to a new version of the
+	# server.
+	if ( -f $sentinel ) {
+	    print( "==== $ts Reloading ====\n" );
+	    open( my $fd, '<', $sentinel );
+	    print <$fd>;
+	    close($fd);
+	    unlink( $sentinel );
+	    print( "\n" );
+	    exit 0;
+	}
+
+	return;
+    }
+
+    # Dump energy reports to individual files.
+    if ( $m->{type} == 0x0104 && $m->{length} > 210 ) {
+
+	#### TODO: If supporting more than one inverter,
+	#### prefix the filename by the inverter id.
+
+	my $fn = $ts;
+	$fn =~ s/[- :]//g;
+	$fn .= ".dat";
+	$tag .= " DATA";
+
+	my $fd;
+
+	if ( sysopen( $fd, $fn, O_WRONLY|O_CREAT )
+	     and syswrite( $fd, $msg ) == length($msg)
+	     and close($fd) ) {
+	    # OK
+	}
+	else {
+	    $tag .= " ERROR $fn: $!";
+	}
+
+	# Dump message in hex.
+	print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" );
+
+	return;
+    }
+
+    # Unhandled.
+    $tag .= " AHOY" if $m->{type} == 0x0103 && $m->{length} > 210;
+    print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" );
+    return;
 }
 
 ################ Command line options ################
