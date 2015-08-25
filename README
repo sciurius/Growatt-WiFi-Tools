@@ -34,6 +34,28 @@ your installation.
    the Growatt server. It just copies the energy data packages to
    local disk.
 
+2c. Start the simple stanalone server.
+
+   This server should be run using systemd (per connection server) or xinetd.
+
+   For systemd, install the supplied growattserver.socket and
+   growattserver@.service files into /etc/systemd/system .
+   Adjust growattserver@.service to reflect the actual location of the
+   simple server script, and the location where the data should be collected.
+
+   Start the service (as super user):
+
+   systemctl start growattserver.socket
+
+   If you're satisfied, you can remove the "--debug" option in
+   growattserver@.service to reduce the log messages. And do not forget
+   to enable growattserver.socket using systemctl so it will be
+   activated automatically upon reboot.
+
+   When deployed using systemd, a logfile will be created in the
+   server directory. The name of the logfile is derived from the
+   current date, e.g., 20150702.log.
+
 3. In the Growatt WiFi module, set the server to the system running
    the proxy or standalone server. A reboot of the module is
    neccessary.
@@ -42,14 +64,12 @@ your installation.
    misinform the Growatt server that it is sending data to
    "server.growatt.com". Likewise, if an instruction arrives from the
    server to change the server address, this is changed to the actual
-   address. The hard wired part is that your local server needs to be
-   called "groprx.squirrel.nl", but you can change that to anything
-   else as long as is exactly 18 characters long.
+   address.
 
    I hope to remove this 'fix' when Growatt finally switches their
    servers to another location.
 
-   The standalone server doesn't have this 'fix' code.
+   The standalone servers don't have nor need this 'fix' code.
 
 4. In the directory where the proxy server is running small data files
    will be created:
