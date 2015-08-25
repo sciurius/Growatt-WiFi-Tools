@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Aug 23 23:14:15 2015
-# Update Count    : 163
+# Last Modified On: Mon Aug 24 20:45:43 2015
+# Update Count    : 172
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -13,7 +13,7 @@
 #
 # The Growatt WiFi module communicates with the Growatt server
 # (server.growatt.com, port 5279). This proxy server can be put
-# between de module and the server to untercept all traffic.
+# between de module and the server to intercept all traffic.
 #
 # The proxy is transparent, every data package from the module is sent
 # to the server, and vice versa. An extensive logging is produced of
@@ -59,15 +59,14 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.23 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.24 );
 
 ################ Command line parameters ################
 
 use Getopt::Long 2.13;
 
 # Command line options.
-# NOTE: CURRENTLY, LOCAL HOST AND REMOTE HOST MUST BE EXACTLY 18 CHARS LONG
-my $local_host  = "groprx.squirrel.nl";	# proxy server (this hist)
+my $local_host  = "groprx.squirrel.nl";	# proxy server (this host)
 my $local_port  = 5279;		# local port. DO NOT CHANGE
 my $remote_host = "server.growatt.com";		# remote server. DO NOT CHANGE
 my $remote_port = 5279;		# remote port. DO NOT CHANGE
@@ -106,7 +105,7 @@ if ( $test ) {
 
 my $ioset = IO::Select->new;
 my %socket_map;
-my $sentinel = ".reload";
+my $s_reload = ".reload";
 my $remote_socket;
 
 $debug = 1;			# for the time being
@@ -141,24 +140,19 @@ else {
     $ioset->add($server);
 }
 
-
 my $busy;
 while ( 1 ) {
     my @sockets = $ioset->can_read($timeout);
     unless ( @sockets ) {
-	if ( !$sock_act && ( $busy || -f $sentinel ) ) {
-	    if ( open( my $fd, '<', $sentinel ) ) {
-		print <$fd>;
-		close($fd);
-		unlink($sentinel);
-	    }
+	if ( !$sock_act && ( $busy || -f $s_reload ) ) {
+	    unlink($s_reload);
 	    print( "==== ", ts(), " TIMEOUT -- Reloading ====\n\n" );
 	    exit 0;
 	}
 	else {
 	    print( "==== ", ts(), " TIMEOUT ====\n\n" );
 	    if ( $sock_act ) {
-		unlink($sentinel);
+		unlink($s_reload);
 		exit 0;
 	    }
 	    next;
@@ -173,13 +167,13 @@ while ( 1 ) {
         }
         else {
             next unless exists $socket_map{$socket};
-            my $remote = $socket_map{$socket};
+            my $dest = $socket_map{$socket};
             my $buffer;
             my $len = $socket->sysread($buffer, 4096);
             if ( $len ) {
 		while ( my $msg = split_msg( \$buffer ) ) {
 		    $msg = preprocess_msg( $socket, $msg );
-		    $remote->syswrite($msg);
+		    $dest->syswrite($msg);
 		    postprocess_msg( $socket, $msg );
 		}
             }
@@ -292,6 +286,25 @@ sub split_msg {
     return;
 }
 
+sub disassemble {
+    my ( $msg ) = @_;
+    return unless $msg =~ /^\x00\x01\x00\x02(..)(..)/;
+
+    my $length = unpack( "n", $1 );
+    return { length => $length,
+	     type   => unpack( "n", $2 ),
+	     data   => substr( $msg, 8, $length-2 ),
+	     prefix => substr( $msg, 0, 8 ) };
+}
+
+sub assemble {
+    my ( $msg ) = @_;
+
+    # Only data and type is used.
+    return pack( "n4", 1, 2, 2+length($msg->{data}), $msg->{type} )
+      . $msg->{data};
+}
+
 sub preprocess_msg {
     my ( $socket, $msg ) = @_;
 
@@ -326,25 +339,6 @@ sub preprocess_msg {
     return $msg;
 }
 
-sub disassemble {
-    my ( $buffer ) = @_;
-    return unless $buffer =~ /^\x00\x01\x00\x02(..)(..)/;
-
-    my $length = unpack( "n", $1 );
-    return { length => $length,
-	     type   => unpack( "n", $2 ),
-	     data   => substr( $buffer, 8, $length-2 ),
-	     prefix => substr( $buffer, 0, 8 ) };
-}
-
-sub assemble {
-    my ( $msg ) = @_;
-
-    # Only data and type is used.
-    return pack( "n4", 1, 2, 2+length($msg->{data}), $msg->{type} )
-      . $msg->{data};
-}
-
 sub postprocess_msg {
     my ( $socket, $msg ) = @_;
 
@@ -357,7 +351,6 @@ sub postprocess_msg {
 	print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" );
 	return;
     }
-
 
     # PING.
     if ( $m->{type} == 0x0116 && $m->{length} == 12 ) {
@@ -374,18 +367,15 @@ sub postprocess_msg {
 		$ts, $tag, $m->{type},
 		unpack( "C", substr( $m->{data}, 0, 1 ) ) );
 
-	# For development: If there's a file $sentinel in the current
+	# For development: If there's a file $s_reload in the current
 	# directory, stop this instance of the server.
 	# When invoked via the "run_server.sh" script this will
 	# immedeately start a new server instance.
 	# This can be used to upgrade to a new version of the
 	# server.
-	if ( -f $sentinel ) {
+	if ( -f $s_reload ) {
 	    print( "==== $ts Reloading ====\n" );
-	    open( my $fd, '<', $sentinel );
-	    print <$fd>;
-	    close($fd);
-	    unlink( $sentinel );
+	    unlink( $s_reload );
 	    print( "\n" );
 	    exit 0;
 	}
@@ -491,9 +481,9 @@ sub readhex {
 }
 
 sub test {
-    my $buffer = readhex();
-    my $new = preprocess_package(123,$buffer);
-    print( "ORIG:\n", Hexify(\$buffer), "\n\nNEW:\n", Hexify(\$new), "\n\n");
+    my $msg = readhex();
+    my $new = preprocess_package(123,$msg);
+    print( "ORIG:\n", Hexify(\$msg), "\n\nNEW:\n", Hexify(\$new), "\n\n");
 }
 
 __DATA__
