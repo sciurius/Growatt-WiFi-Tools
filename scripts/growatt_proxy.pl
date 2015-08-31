@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Aug 24 20:45:43 2015
-# Update Count    : 172
+# Last Modified On: Mon Aug 31 14:57:08 2015
+# Update Count    : 183
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -59,7 +59,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.24 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.26 );
 
 ################ Command line parameters ################
 
@@ -106,6 +106,8 @@ if ( $test ) {
 my $ioset = IO::Select->new;
 my %socket_map;
 my $s_reload = ".reload";
+my $s_reboot = ".reboot";
+my $s_inject = ".inject";
 my $remote_socket;
 
 $debug = 1;			# for the time being
@@ -339,6 +341,8 @@ sub preprocess_msg {
     return $msg;
 }
 
+my $data_logger;
+
 sub postprocess_msg {
     my ( $socket, $msg ) = @_;
 
@@ -355,7 +359,8 @@ sub postprocess_msg {
     # PING.
     if ( $m->{type} == 0x0116 && $m->{length} == 12 ) {
 	print( "==== $ts $tag PING ",
-	       substr( $m->{data}, 0, 10 ), " ====\n\n" );
+	       $data_logger = substr( $m->{data}, 0, 10 ),
+	       " ====\n\n" );
 	return;
     }
 
@@ -378,6 +383,22 @@ sub postprocess_msg {
 	    unlink( $s_reload );
 	    print( "\n" );
 	    exit 0;
+	}
+	if ( -f $s_reboot ) {
+	    unlink($s_reboot);
+	    my $m = m_reboot();
+	    print( "==== $ts $tag REBOOT ====\n", Hexify(\$m), "\n" );
+	    $socket_map{$socket}->syswrite($m);
+	}
+	if ( -f $s_inject ) {
+	    open( my $fd, '<', $s_inject );
+	    my $data = do { local $/; <$fd> };
+	    if ( $data ) {
+		$data = readhex($data)
+	    }
+	    unlink($s_inject);
+	    print( "==== $ts INJECT ====\n", Hexify(\$data), "\n" );
+	    $socket_map{$socket}->syswrite($data);
 	}
 
 	return;
@@ -415,6 +436,14 @@ sub postprocess_msg {
     $tag .= " AHOY" if $m->{type} == 0x0103 && $m->{length} > 210;
     print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" );
     return;
+}
+
+sub m_reboot {
+    my ( $dl ) = @_;
+    $dl //= $data_logger;
+    pack( "n[4]A[10]n[2]A",
+	  1, 2, 7+length($dl), 0x0118,
+	  $dl, 0x20, 1, "1" );
 }
 
 ################ Command line options ################
@@ -471,8 +500,7 @@ EndOfUsage
 }
 
 sub readhex {
-    local $/;
-    my $d = <DATA>;
+    my $d = shift;
     $d =~ s/^  ....: //gm;
     $d =~ s/  .*$//gm;
     $d =~ s/\s+//g;
@@ -481,7 +509,8 @@ sub readhex {
 }
 
 sub test {
-    my $msg = readhex();
+    my $data = do { local $/; <DATA> };
+    my $msg = readhex($data);
     my $new = preprocess_package(123,$msg);
     print( "ORIG:\n", Hexify(\$msg), "\n\nNEW:\n", Hexify(\$new), "\n\n");
 }
