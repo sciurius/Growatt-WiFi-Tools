@@ -1,0 +1,754 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>WiFi_Module_Protocol</title>
+<!-- 2015-08-31 Mon 21:31 -->
+<meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta  name="generator" content="Org-mode" />
+<meta  name="author" content="Johan Vromans" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+  .title  { text-align: center; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { color: green; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #ccc;
+    box-shadow: 3px 3px 3px #eee;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: visible;
+    padding-top: 1.2em;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    background-color: white;
+    top: -10px;
+    right: 10px;
+    padding: 3px;
+    border: 1px solid black;
+  }
+  pre.src:hover:before { display: inline;}
+  pre.src-sh:before    { content: 'sh'; }
+  pre.src-bash:before  { content: 'sh'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-R:before     { content: 'R'; }
+  pre.src-perl:before  { content: 'Perl'; }
+  pre.src-java:before  { content: 'Java'; }
+  pre.src-sql:before   { content: 'SQL'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.right  { text-align: center;  }
+  th.left   { text-align: center;   }
+  th.center { text-align: center; }
+  td.right  { text-align: right;  }
+  td.left   { text-align: left;   }
+  td.center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara:nth-child(2) { display: inline; }
+  .footpara { display: block; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  /*]]>*/-->
+</style>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2013 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">WiFi_Module_Protocol</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#sec-1">1. Growatt Wifi Module Data Protocol</a>
+<ul>
+<li><a href="#sec-1-1">1.1. Protocol set-up</a></li>
+<li><a href="#sec-1-2">1.2. Data exchange</a></li>
+<li><a href="#sec-1-3">1.3. Message details</a>
+<ul>
+<li><a href="#sec-1-3-1">1.3.1. Basic message format</a></li>
+<li><a href="#sec-1-3-2">1.3.2. PING</a></li>
+<li><a href="#sec-1-3-3">1.3.3. DATA4 ACK</a></li>
+<li><a href="#sec-1-3-4">1.3.4. DATA3 ACK + IDENTIFY</a></li>
+<li><a href="#sec-1-3-5">1.3.5. ANNOUNCE</a></li>
+<li><a href="#sec-1-3-6">1.3.6. CLIENT DETAILS</a></li>
+<li><a href="#sec-1-3-7">1.3.7. ENERGY DATA</a></li>
+<li><a href="#sec-1-3-8">1.3.8. CONFIGURE</a></li>
+<li><a href="#sec-1-3-9">1.3.9. REBOOT</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-sec-1" class="outline-2">
+<h2 id="sec-1"><span class="section-number-2">1</span> Growatt Wifi Module Data Protocol</h2>
+<div class="outline-text-2" id="text-1">
+</div><div id="outline-container-sec-1-1" class="outline-3">
+<h3 id="sec-1-1"><span class="section-number-3">1.1</span> Protocol set-up</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+DataLogger (client) connects to server.
+</p>
+
+<p>
+Every 3 minutes, there's a PING that is echoed by the server. This
+is independent of the other messages.
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 0c 01 16 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37                                            77
+</pre>
+
+<p>
+Client announces the inverter.
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 d9 01 03 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 4f 50 32 34 35 31 30 30 31 37 00 00 00 00  77OP24510017....
+0020: 00 00 02 00 00 00 2c 01 01 00 00 00 00 00 ff 00  ......,.........
+0030: ff ff ff 00 01 11 70 17 70 30 43 30 2e 39 20 30  ......p.p0C0.9 0
+0040: 44 30 2e 39 20 00 01 00 00 0d ac 00 1e 07 35 0a  D0.9 .........5.
+0050: 55 12 91 13 9c 4f 50 32 34 35 31 30 30 31 37 00  U....OP24510017.
+0060: 10 f1 71 00 01 00 00 00 00 00 00 00 00 07 35 0a  ..q...........5.
+0070: 55 12 91 13 9c 06 40 0a 8c 11 f8 15 18 08 53 02  U.....@.......S.
+0080: 03 00 2d 00 59 07 df 00 07 00 17 00 05 00 2a 00  ..-.Y.........*.
+0090: 05 03 e8 03 e8 00 64 00 64 03 e8 03 e8 00 00 00  ......d.d.......
+00a0: 00 47 72 6f 77 61 74 74 20 49 6e 76 65 72 74 65  .Growatt Inverte
+00b0: 72 44 43 41 41 30 34 30 34 00 00 00 05 01 30 00  rDCAA0404.....0.
+00c0: 01 00 00 00 00 00 00 00 00 00 00 00 01 13 a6 00  ................
+00d0: c8 00 00 00 00 00 00 00 00 00 00 00 00 00 00     ...............
+</pre>
+
+<p>
+Initially, the server will ACK and then ask for client details.
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 03 01 03 00
+
+      00 01 00 02 00 03 header + length (3)
+      01 03 00          ACK 01 03 message
+
+0000: 00 01 00 02 00 10 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 04 00 15                                77.... 
+
+      00 01 00 02 00 10 header + length (16)
+      01 19             query
+      41..37            data logger id
+      00 04 00 15       First / last config item
+</pre>
+
+<p>
+The client will send a number of messages with details, one for every
+config item requested. Note some items are skipped.
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 10 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 04 00 15                                77....
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 11 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 04 00 01 35                             77....5
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 11 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 05 00 01 31                             77....1
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 12 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 06 00 02 33 32                          77....32
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 1a 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 08 00 0a 41 48 34 34 34 36 30 34 37 37  77....AH44460477
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 11 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 0a 00 01 30                             77....0
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 1e 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 0b 00 0e 30 23 30 23 30 2e 30 2e 30 2e  77....0#0#0.0.0.
+0020: 30 23 30 23                                      0#0#
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 11 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 0d 00 01 32                             77....2
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 1e 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 0e 00 0e 31 39 32 2e 31 36 38 2e 31 30  77....192.168.10
+0020: 2e 31 30 30                                      .100
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 14 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 0f 00 04 38 38 39 36                    77....8896
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 21 01 19 41 48 34 34 34 36 30 34  .....!..AH444604
+0010: 37 37 00 10 00 11 41 43 3a 43 46 3a 32 33 3a 33  77....AC:CF:23:3
+0020: 44 3a 38 31 3a 45 35                             D:81:E5
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 22 01 19 41 48 34 34 34 36 30 34  ....."..AH444604
+0010: 37 37 00 11 00 12 73 65 72 76 65 72 2e 67 72 6f  77....server.gro
+0020: 77 61 74 74 2e 63 6f 6d                          watt.com
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 14 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 12 00 04 35 32 37 39                    77....5279
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 22 01 19 41 48 34 34 34 36 30 34  ....."..AH444604
+0010: 37 37 00 13 00 12 73 65 72 76 65 72 2e 67 72 6f  77....server.gro
+0020: 77 61 74 74 2e 63 6f 6d                          watt.com
+</pre>
+
+<pre class="example">
+0000: 00 01 00 02 00 17 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 15 00 07 33 2e 31 2e 30 2e 30           77....3.1.0.0
+</pre>
+
+<p>
+If no data has been sent yet, it starts repeating the inverter
+announce message every 30 seconds, until the server replies with ACK.
+</p>
+
+<p>
+Alternatively, the server may ACK and ask for details again. The above
+process is repeated.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-1-2" class="outline-3">
+<h3 id="sec-1-2"><span class="section-number-3">1.2</span> Data exchange</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+Once the communication is established and ACKed, the client will send
+a DATA message (containing inverter energy data) every 5 minutes. 
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 d9 01 04 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 4f 50 32 34 35 31 30 30 31 37 00 00 00 00  77OP24510017....
+0020: 00 00 02 00 00 00 2c 00 00 00 00 00 00 0b 15 00  ......,.........
+0030: 00 00 00 00 00 0d 08 00 00 00 00 00 00 00 00 00  ................
+0040: 00 13 87 09 2c 00 00 00 00 00 00 09 2e 00 00 00  ....,...........
+0050: 00 00 00 09 36 00 00 00 00 00 00 00 00 00 00 00  ....6...........
+0060: 00 14 91 00 27 4b 60 00 eb 00 00 00 00 00 00 00  ....'K`.........
+0070: 00 00 00 00 00 00 00 00 00 00 e9 08 8f 08 7e 00  ..............~.
+0080: 00 00 2d 00 59 4e 20 00 00 00 00 00 00 00 00 00  ..-.YN .........
+0090: 00 04 39 00 00 00 00 00 00 0f 99 00 00 13 d2 00  ..9.............
+00a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00b0: 00 00 01 11 70 00 00 00 00 00 00 00 00 00 00 00  ....p...........
+00c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00d0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00     ...............
+</pre>
+
+<p>
+Which is immedeately ACKed by the server
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 03 01 04 00                       .........
+</pre>
+
+<p>
+If no response is received from the server for 15 messages (data, ack,
+&#x2026;) the connection is dropped and immedeately re-established.
+</p>
+
+<p>
+The server can ask for client details at any time, without
+interrupting the stream of messages, e.g.
+</p>
+
+<pre class="example">
+client sends DATA
+server sends IDENTIFY
+client sends configure data
+server ACKs the DATA
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3" class="outline-3">
+<h3 id="sec-1-3"><span class="section-number-3">1.3</span> Message details</h3>
+<div class="outline-text-3" id="text-1-3">
+</div><div id="outline-container-sec-1-3-1" class="outline-4">
+<h4 id="sec-1-3-1"><span class="section-number-4">1.3.1</span> Basic message format</h4>
+<div class="outline-text-4" id="text-1-3-1">
+<pre class="example">
+00 01 00 02 ll ll tt tt data
+
+ll ll = length of tt tt + data
+tt tt = message type
+        01 03   DATA3 (data &gt; 00)
+        01 03   DATA3 ACK (data = 00)
+        01 04   DATA4 (data &gt; 00)
+        01 04   DATA4 ACK  (data = 00)
+        01 16   PING (data = DataloggerId/a)
+        01 18   CONFIGURE
+        01 19   IDENTIFY (DataloggerId/a + 00 04 00 15)
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3-2" class="outline-4">
+<h4 id="sec-1-3-2"><span class="section-number-4">1.3.2</span> PING</h4>
+<div class="outline-text-4" id="text-1-3-2">
+<pre class="example">
+0000: 00 01 00 02 00 0c 01 16 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37                                            77              
+
+      00 01 00 02     header
+      00 0c           length
+      01 16           type = PING
+      41..37          AH44460477 (data logger id)
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3-3" class="outline-4">
+<h4 id="sec-1-3-3"><span class="section-number-4">1.3.3</span> DATA4 ACK</h4>
+<div class="outline-text-4" id="text-1-3-3">
+<pre class="example">
+0000: 00 01 00 02 00 03 01 04 00                       .........       
+
+      00 01 00 02     header
+      00 03           length
+      01 04           type = DATA4
+      00              additional info
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3-4" class="outline-4">
+<h4 id="sec-1-3-4"><span class="section-number-4">1.3.4</span> DATA3 ACK + IDENTIFY</h4>
+<div class="outline-text-4" id="text-1-3-4">
+<pre class="example">
+0000: 00 01 00 02 00 03 01 03 00 00 01 00 02 00 10 01  ................
+0010: 19 41 48 34 34 34 36 30 34 37 37 00 04 00 15     .AH44460477.... 
+
+      00 01 00 02     header
+      00 03           length
+      01 03           type = DATA3
+      00              additional info
+
+      00 01 00 02     header
+      00 10           length (16)
+      01 19           type = QUERY
+      41..37          data logger id
+      00 04 00 15     Identify?
+</pre>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3-5" class="outline-4">
+<h4 id="sec-1-3-5"><span class="section-number-4">1.3.5</span> ANNOUNCE</h4>
+<div class="outline-text-4" id="text-1-3-5">
+<p>
+ANNOUNCE is a DATA3 message (type = 0x0103).
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 d9 01 03 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 4f 50 32 34 35 31 30 30 31 37 00 00 00 00  77OP24510017....
+0020: 00 00 02 00 00 00 2c 01 01 00 00 00 00 00 ff 00  ......,.........
+0030: ff ff ff 00 01 11 70 17 70 30 43 30 2e 39 20 30  ......p.p0C0.9 0
+0040: 44 30 2e 39 20 00 01 00 00 0d ac 00 1e 07 35 0a  D0.9 .........5.
+0050: 55 12 91 13 9c 4f 50 32 34 35 31 30 30 31 37 00  U....OP24510017.
+0060: 10 f1 71 00 01 00 00 00 00 00 00 00 00 07 35 0a  ..q...........5.
+0070: 55 12 91 13 9c 06 40 0a 8c 11 f8 15 18 08 53 02  U.....@.......S.
+0080: 03 00 2d 00 59 07 dc 00 01 00 02 00 10 00 39 00  ..-.Y.........9.
+0090: 00 03 e8 03 e8 00 64 00 64 03 e8 03 e8 00 00 00  ......d.d.......
+00a0: 00 47 72 6f 77 61 74 74 20 49 6e 76 65 72 74 65  .Growatt Inverte
+00b0: 72 44 43 41 41 30 34 30 34 00 00 00 05 01 30 00  rDCAA0404.....0.
+00c0: 01 00 00 00 00 00 00 00 00 00 00 00 01 13 a6 00  ................
+00d0: c8 00 00 00 00 00 00 00 00 00 00 00 00 00 00     ...............
+</pre>
+
+<p>
+This message is confirmed by the server with an empty DATA3 message.
+</p>
+
+<pre class="example">
+00 01 00 02 00 d9 01 03
+AH44460477
+OP24510017
+00 00 00 00 00 00 02 00 00 00 2c 01 01 00 00 00 00 00 ff 00
+ff ff ff 00 01 11 70 17 70
+0C0.9 0D0.9             !trailing space!
+00 01 00 00 0d ac 00 1e 07 35 0a 55 12 91 13 9c
+OP24510017
+00 10 f1 71 00 01 00 00 00 00 00 00 00 00 07 35
+0a 55 12 91 13 9c 06 40 0a 8c 11 f8 15 18 08 53
+02 03 00 2d 00 59 07 dc 00 01 00 02 00 10 00 39
+00 00 03 e8 03 e8 00 64 00 64 03 e8 03 e8 00 00
+00 00
+Growatt Inverter
+DCAA0404
+00 00 00 05 01 30 00 01 00 00 00 00 00 00 00 00
+00 00 00 01 13 a6 00 c8 00 00 00 00 00 00 00 00
+00 00 00 00 00 00
+</pre>
+
+<p>
+(inverter &gt; property:0C0.9/DCAA0404/A0B0D1T0PFU1M7S1)?
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3-6" class="outline-4">
+<h4 id="sec-1-3-6"><span class="section-number-4">1.3.6</span> CLIENT DETAILS</h4>
+<div class="outline-text-4" id="text-1-3-6">
+<pre class="example">
+     00 01 00 02 ll ll 01 19 DataloggerId/a
+     ss ss ll ll data
+
+     ss ss = subtype
+     ll ll = length of data to follow
+
+             00 04 00 01 35                   5 loginterval/a
+             00 05 00 01 31                   1/a dev addr range?
+             00 06 00 02 33 32                32/a dev addr range?
+             00 08 00 ll AH44460477           DataloggerId/a
+             00 0a 00 01 30                   0/a
+             00 0b 00 0e 0#0#0.0.0.0#0#       ?listen?/a
+             00 0d 00 01 32                   2/a
+             00 0e 00 0e 192.168.10.100       Local IP/a
+             00 0f 00 04 3498                 Local Port/a?
+             00 10 00 11 AC:CF:23:3D:81:E5    MAC address/a
+             00 11 00 0d 192.168.1.251        Server IP/a?
+             00 12 00 04 5279                 Server Port/a
+             00 13 00 0d 192.168.1.251        Server IP/a
+             00 15 00 07 3.1.0.0              Growatt WiFi version/a
+
+0000: 00 01 00 02 00 11 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 04 00 01 35                             77....5         
+
+      00 01 00 02 00 11 01 19 AH44460477
+      00 04 00 01 35  log interval? 5 min?
+
+0000: 00 01 00 02 00 11 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 05 00 01 31 00 01 00 02 00 12 01 19 41  77....1........A
+0020: 48 34 34 34 36 30 34 37 37 00 06 00 02 33 32 00  H44460477....32.
+0030: 01 00 02 00 1a 01 19 41 48 34 34 34 36 30 34 37  .......AH4446047
+0040: 37 00 08 00 0a 41 48 34 34 34 36 30 34 37 37 00  7....AH44460477.
+0050: 01 00 02 00 11 01 19 41 48 34 34 34 36 30 34 37  .......AH4446047
+0060: 37 00 0a 00 01 30                                7....0          
+
+      00 01 00 02 00 11 01 19 AH44460477
+      00 05 00 01 31
+      00 01 00 02 00 12 01 19 AH44460477
+      00 06 00 02 33 32                       Max TCP Num (Server)?
+      00 01 00 02 00 1a 01 19 AH44460477
+      00 08 00 0a AH44460477                  data logger id
+      00 01 00 02 00 11 01 19 AH44460477
+      00 0a 00 01 30 
+
+0000: 00 01 00 02 00 1e 01 19 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 0b 00 0e 30 23 30 23 30 2e 30 2e 30 2e  77....0#0#0.0.0.
+0020: 30 23 30 23 00 01 00 02 00 11 01 19 41 48 34 34  0#0#........AH44
+0030: 34 36 30 34 37 37 00 0d 00 01 32 00 01 00 02 00  460477....2.....
+0040: 1e 01 19 41 48 34 34 34 36 30 34 37 37 00 0e 00  ...AH44460477...
+0050: 0e 31 39 32 2e 31 36 38 2e 31 30 2e 31 30 30 00  .192.168.10.100.
+0060: 01 00 02 00 14 01 19 41 48 34 34 34 36 30 34 37  .......AH4446047
+0070: 37 00 0f 00 04 33 34 39 38                       7....3498       
+
+      00 01 00 02 00 1e 01 19 AH44460477
+      00 0b 00 0e 0#0#0.0.0.0#0#
+      00 01 00 02 00 11 01 19 AH44460477
+      00 0d 00 01 32
+      00 01 00 02 00 1e 01 19 AH44460477
+      00 0e 00 0e 192.168.10.100              Local IP
+      00 01 00 02 00 14 01 19 AH44460477
+      00 0f 00 04 3498                        Local Port?
+
+0000: 00 01 00 02 00 21 01 19 41 48 34 34 34 36 30 34  .....!..AH444604
+0010: 37 37 00 10 00 11 41 43 3a 43 46 3a 32 33 3a 33  77....AC:CF:23:3
+0020: 44 3a 38 31 3a 45 35 00 01 00 02 00 1d 01 19 41  D:81:E5........A
+0030: 48 34 34 34 36 30 34 37 37 00 11 00 0d 31 39 32  H44460477....192
+0040: 2e 31 36 38 2e 31 2e 32 35 31 00 01 00 02 00 14  .168.1.251......
+0050: 01 19 41 48 34 34 34 36 30 34 37 37 00 12 00 04  ..AH44460477....
+0060: 35 32 37 39 00 01 00 02 00 1d 01 19 41 48 34 34  5279........AH44
+0070: 34 36 30 34 37 37 00 13 00 0d 31 39 32 2e 31 36  460477....192.16
+0080: 38 2e 31 2e 32 35 31 00 01 00 02 00 17 01 19 41  8.1.251........A
+0090: 48 34 34 34 36 30 34 37 37 00 15 00 07 33 2e 31  H44460477....3.1
+00a0: 2e 30 2e 30                                      .0.0            
+
+      00 01 00 02 00 21 01 19 AH44460477
+      00 10 00 11 AC:CF:23:3D:81:E5           MAC address
+      00 01 00 02 00 1d 01 19 AH44460477
+      00 11 00 0d 192.168.1.251               Server name/IP
+      00 01 00 02 00 14 01 19 AH44460477
+      00 12 00 04 5279                        Server Port
+      00 01 00 02 00 1d 01 19 AH44460477
+      00 13 00 0d 192.168.1.251               Server name/IP?
+      00 01 00 02 00 17 01 19 AH44460477
+      00 15 00 07 3.1.0.0                     WiFi module (firmware) version
+</pre>
+
+<p>
+The WiFi module will connect to the Growatt server, as
+configured by items 0x12 and 0x13.
+</p>
+
+<p>
+Note that Growatt requires the server name (config item 0x13)
+to be "server.growatt.com". It will force
+reconfiguration/reboot of the client if there's a different
+content. Even the server IP is not accepted. According to
+Growatt support department:
+</p>
+
+<blockquote>
+<p>
+<i>This is done by Growatt, please don't worry.</i>
+</p>
+
+<p>
+<i>We will build a database in US to make visit speed faster, so your wi-fi server address must be server.growatt.com, not the IP address, otherwise your plant data will not come to new database.</i>
+</p>
+
+<p>
+<i>Our engineer is searching these Wi-Fi which Server address is not server.growatt.com, and try modify it, to make sure all data can move to new database then.</i>
+</p>
+</blockquote>
+
+<p>
+The switch to the new database is scheduled for July 28 2015,
+08.00-11.00 GMT+8.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3-7" class="outline-4">
+<h4 id="sec-1-3-7"><span class="section-number-4">1.3.7</span> ENERGY DATA</h4>
+<div class="outline-text-4" id="text-1-3-7">
+<p>
+Energy data is a DATA4 message (type = 0x0104).
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 d9 01 04 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 4f 50 32 34 35 31 30 30 31 37 00 00 00 00  77OP24510017....
+0020: 00 00 02 00 00 00 2c 00 01 00 00 0a b1 09 f9 00  ......,.........
+0030: 00 00 00 00 00 15 63 00 05 00 00 0a b1 00 00 08  ......c.........
+0040: 44 13 84 09 04 00 03 00 00 02 b4 08 fc 00 04 00  D...............
+0050: 00 03 98 09 08 00 03 00 00 02 b5 00 00 00 f3 00  ................
+0060: 00 01 c3 00 03 0e 47 01 6f 00 00 00 00 00 00 00  ......G.o.......
+0070: 00 00 00 00 00 00 00 00 00 01 73 0b 4e 0b 48 00  ..........s.N.H.
+0080: 00 00 2d 00 59 4e 20 00 00 00 00 00 00 00 00 00  ..-.YN .........
+0090: 00 00 00 00 00 00 f3 00 00 01 bf 00 00 01 bf 00  ................
+00a0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00b0: 04 00 01 11 70 00 00 00 00 00 00 00 00 00 00 00  ....p...........
+00c0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00d0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00     ...............
+</pre>
+
+<p>
+This message is confirmed by the server with an empty DATA4 message.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3-8" class="outline-4">
+<h4 id="sec-1-3-8"><span class="section-number-4">1.3.8</span> CONFIGURE</h4>
+<div class="outline-text-4" id="text-1-3-8">
+<pre class="example">
+0000: 00 01 00 02 00 22 01 18 41 48 34 34 34 36 30 34  ....."..AH444604
+0010: 37 37 00 13 00 12 73 65 72 76 65 72 2e 67 72 6f  77....server.gro
+0020: 77 61 74 74 2e 63 6f 6d                          watt.com        
+
+      00 01 00 02     header
+      00 22           length
+      01 18           type = CONFIG
+      41..37          DataloggerId/a
+      00 13           item
+      00 12 ...       value
+</pre>
+
+<p>
+This one ( <code>00 13 00</code> ) sets the server address to server.growatt.com.
+</p>
+
+<p>
+Client response
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 0f 01 18 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 13 00                                   77...           
+
+      00 01 00 02     header
+      00 0f           length
+      01 18           type = CONFIG
+      41..37          DataloggerId/a
+      00 13           item
+      00              empty =&gt; ACK
+</pre>
+
+<p>
+If something wrong with the request, e.g. an invalid value is
+requested, the final byte will be 0x03 (NACK).
+</p>
+
+<p>
+Note: When changing the interval time (config item 4) the data logger
+will transmit data messages at the indicated interval. The
+spreadsheets downloadable from the Growatt server will reflect the
+changed interval but the graphs on the server will still be adjusted
+to the standard 5-min interval.
+</p>
+</div>
+</div>
+
+<div id="outline-container-sec-1-3-9" class="outline-4">
+<h4 id="sec-1-3-9"><span class="section-number-4">1.3.9</span> REBOOT</h4>
+<div class="outline-text-4" id="text-1-3-9">
+<pre class="example">
+0000: 00 01 00 02 00 11 01 18 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 20 00 01 31                             77. ..1         
+
+      00 01 00 02     header
+      00 11           length
+      01 18           type = CONFIG
+      41..37          DataloggerId/a
+      00 20           Reboot
+      00 01 31        1/a
+</pre>
+
+<p>
+Client response
+</p>
+
+<pre class="example">
+0000: 00 01 00 02 00 0f 01 18 41 48 34 34 34 36 30 34  ........AH444604
+0010: 37 37 00 20 00                                   77. .           
+
+      00 01 00 02     header
+      00 0f           length
+      01 18           type = CONFIG
+      41..37          DataloggerId/a
+      00 20           item
+      00              empty =&gt; ACK
+</pre>
+
+<p>
+And then the WiFi modules reboots.
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Johan Vromans</p>
+<p class="date">Created: 2015-08-31 Mon 21:31</p>
+<p class="creator"><a href="http://www.gnu.org/software/emacs/">Emacs</a> 24.5.1 (<a href="http://orgmode.org">Org</a> mode 8.2.10)</p>
+<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
