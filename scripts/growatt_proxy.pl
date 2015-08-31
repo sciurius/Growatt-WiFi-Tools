@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Aug 31 14:57:08 2015
-# Update Count    : 183
+# Last Modified On: Mon Aug 31 15:14:29 2015
+# Update Count    : 187
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -59,7 +59,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_proxy 0.26 );
+my ($my_name, $my_version) = qw( growatt_proxy 0.27 );
 
 ################ Command line parameters ################
 
@@ -397,8 +397,14 @@ sub postprocess_msg {
 		$data = readhex($data)
 	    }
 	    unlink($s_inject);
-	    print( "==== $ts INJECT ====\n", Hexify(\$data), "\n" );
-	    $socket_map{$socket}->syswrite($data);
+	    if ( $data =~ m/^\x00\x01\x00\x02(..)/
+		 && unpack("n", $1)+6 == length($data) ) {
+		print( "==== $ts INJECT ====\n", Hexify(\$data), "\n" );
+		$socket_map{$socket}->syswrite($data);
+	    }
+	    else {
+		print( "==== $ts INJECT ERROR (length check) ====\n", Hexify(\$data), "\n" );
+	    }
 	}
 
 	return;
