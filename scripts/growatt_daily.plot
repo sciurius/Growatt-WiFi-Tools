@@ -25,8 +25,6 @@ set format y "%g kWh"
 
 # Input time format from CSV file.
 set timefmt '%Y-%m-%d'
-# Output time format ( x-axis).
-set format x "%d"
 set locale ""
 
 set macros
@@ -50,7 +48,7 @@ mend = `perl -an -e 'eof && do { print q{"},$F[0],q{"};exit }' @datafile`
 
 # Range and ticks.
 set xrange [ strptime('%Y-%m-%d',mstart)-daysecs:strptime('%Y-%m-%d',mend)+daysecs]
-set xtics mstart,daysecs,mend
+set xtics mstart,daysecs,mend format "%1d" time
 unset mxtics
 set key below
 
