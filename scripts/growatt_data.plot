@@ -10,7 +10,7 @@
 #   gnuplot -e 'datafile="data/20150704.csv";imagefile="here/plot.png" growatt_data.plot
 
 if ( ! exists("term") ) term = "png";
-set term term size 1024,600;
+set term term size 960,600;
 set locale ""
 
 # Allow setting of imagefile on the command line.
@@ -37,12 +37,12 @@ set datafile separator ","
 if ( exists("final") ) {
   today = `perl -an -F, -e '$. == 2 && do { print q{"},$F[1],q{"};exit }' @datafile`
   today = strptime( '%Y-%m-%d %H:%M:%S', today )
-  set title strftime( "%A, %d %B %Y", today )
+  set title strftime( "%A %d %B %Y", today )
 }
 else {
   today = `perl -an -F, -e 'eof && do { print q{"},$F[1],q{"};exit }' @datafile`
   today = strptime( '%Y-%m-%d %H:%M:%S', today )
-  set title strftime( "%A, %d %B %Y, %H:%M:%S", today )
+  set title strftime( "%A %d %B %Y, %H:%M:%S", today )
 }
 set ytics nomirror
 set grid xtics ytics

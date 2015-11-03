@@ -10,7 +10,7 @@
 #   gnuplot -e 'datafile="data/daily.csv";imagefile="here/plot.png" growatt_daily.plot
 
 if ( ! exists("term") ) term = "png";
-set term term size 1024,400;
+set term term size 960,400;
 
 # Allow setting of imagefile on the command line.
 if ( ! exists("imagefile") ) imagefile = 'current_plot%d.' . term
@@ -62,6 +62,7 @@ if ( t1 eq t2 ) {
 else {
    set title t1 . " — " . t2
 }
+set xtics font "Liberation Sans Narrow,12";
 
 plot datafile \
      using "Time":"Eac" \
