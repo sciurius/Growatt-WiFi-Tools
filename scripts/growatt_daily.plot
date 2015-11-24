@@ -10,7 +10,9 @@
 #   gnuplot -e 'datafile="data/daily.csv";imagefile="here/plot.png" growatt_daily.plot
 
 if ( ! exists("term") ) term = "png";
-set term term size 960,400;
+set term term size 960,360;
+set lmargin 10
+set rmargin 10
 
 # Allow setting of imagefile on the command line.
 if ( ! exists("imagefile") ) imagefile = 'current_plot%d.' . term
@@ -55,10 +57,10 @@ set key below
 t1 = strftime("%B %Y",strptime('%Y-%m-%d',mstart))
 t2 = strftime("%B %Y",strptime('%Y-%m-%d',mend))
 if ( t1 eq t2 ) {
-   set title t1
+   set title "Zonnepanelen " . t1
 }
 else {
-   set title t1 . " — " . t2
+   set title "Zonnepanelen " . t1 . " — " . t2
 }
 set xtics font "Liberation Sans Narrow,12";
 
