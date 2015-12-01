@@ -10,7 +10,7 @@
 #   gnuplot -e 'datafile="data/20150704.csv";imagefile="here/plot.png" growatt_data.plot
 
 if ( ! exists("term") ) term = "png";
-set term term size 960,540;
+set term term size 960,360;
 set lmargin 10
 set rmargin 10
 set locale ""
