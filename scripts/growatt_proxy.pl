@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Aug 31 15:14:29 2015
-# Update Count    : 187
+# Last Modified On: Mon Jan 25 15:11:48 2016
+# Update Count    : 188
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -200,7 +200,7 @@ sub new_conn {
 				     );
 	return $s if $s;
 	print( "==== ", ts(), " Unable to connect to $host:$port: $! (retrying) ====\n\n" );
-	sleep 2 + random(2);
+	sleep 2 + rand(2);
     }
     die( "==== ", ts(), " Unable to connect to $host:$port: $! ====\n\n" );
 }
