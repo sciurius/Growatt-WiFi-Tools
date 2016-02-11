@@ -12,12 +12,21 @@ load 'pl_title_d.plot'
 set autoscale y
 set format y "%g kWh"
 
+# Right vertical axis: Accumulated values.
+set autoscale y2
+set format y2 "%g kWh"
+set y2tics
+
+set key maxrows 1 samplen 2 width -1
+
 plot datafile \
      using "Time":"Eac" \
-     with boxes lc rgb 'red' title "Eac (kWh)", \
+     with boxes lc rgb 'red' title "Eac", \
      '' \
      using "Time":(column("Epv2")+column("Epv1")) \
-     with boxes lc rgb 'green' title "PV2 (kWh)", \
+     with boxes lc rgb 'green' title "PV2", \
      '' \
      using "Time":"Epv1" \
-     with boxes lc rgb 'yellow' title "PV1 (kWh)"
+     with boxes lc rgb 'yellow' title "PV1", \
+     '' using "Time":"Eac_total" axes x1y2 with lines lc 'red' title "Totaal Eac", \
+     '' using "Time":"Epv_total" axes x1y2 with lines lc 'green' title "Totaal Epv", \
