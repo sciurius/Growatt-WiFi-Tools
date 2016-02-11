@@ -6,15 +6,16 @@
 # Author          : Johan Vromans
 # Created On      : Mon Jul 20 11:11:37 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Jul 20 11:12:34 2015
-# Update Count    : 1
+# Last Modified On: Wed Feb 10 20:07:33 2016
+# Update Count    : 3
 # Status          : Unknown, Use with caution!
 
 use strict;
 use warnings;
 
 use constant E_pv => 9;
-use constant E_total => 23;
+use constant Eac_total => 23;
+use constant Epv_total => 33;
 
 # Skip first line (column headings).
 my $line = <>;
@@ -29,7 +30,7 @@ while ( <> ) {
     s/,,/,0,/g;
     my @a = split( /,/, $_ );
     $epv = $a[E_pv];
-    $etot = $a[E_total];
+    $etot = $a[Epv_total];
     $einit ||= $etot;
 }
 

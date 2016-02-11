@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Sun Jul 19 16:27:22 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Jul 20 10:18:48 2015
-# Update Count    : 41
+# Last Modified On: Thu Feb 11 17:49:08 2016
+# Update Count    : 42
 # Status          : Unknown, Use with caution!
 
 ################ Common stuff ################
@@ -91,7 +91,7 @@ sub process_file {
 	}
 	my $date = "$1-$2-$3";
 	my $r = $a{$date} || [ $date, ( 999999999, 0 ) x 3 ];
-	my $c = $columns[23];
+	my $c = $columns[33];
 	$r->[1] = $c if $r->[1] > $c;
 	$r->[2] = $c if $r->[2] < $c;
 	$c = $columns[30];
