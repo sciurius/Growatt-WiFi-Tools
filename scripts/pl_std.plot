@@ -11,3 +11,5 @@ set timefmt '%Y-%m-%d'
 set ytics nomirror
 set xtics nomirror
 set grid ytics
+
+set title offset 0,-0.75

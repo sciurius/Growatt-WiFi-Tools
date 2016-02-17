@@ -21,8 +21,8 @@ set key maxrows 1 samplen 2 width -1
 
 plot datafile \
      using "Time":(column("Epv2")+column("Epv1")) \
-     with boxes lc rgb 'green' title "PV2", \
+     with boxes lc rgb '#e69f00' title "PV2", \
      '' \
      using "Time":"Epv1" \
-     with boxes lc rgb 'yellow' title "PV1", \
-     '' using "Time":"Epv_total" axes x1y2 with lines lc 'green' title "Totaal Epv", \
+     with boxes lc rgb '#56b4e9' title "PV1", \
+     '' using "Time":"Epv_total" axes x1y2 with lines lc 'black' title "Cumulatief", \
