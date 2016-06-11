@@ -10,6 +10,7 @@ dateindex = 1
 load 'pl_title.plot'
 
 # Left vertical axis: Power. My plant is 7kW max.
+# Use 8 kW since it lines up with the 40 kWh from the right axis.
 set yrange [ 0:8 ]
 set format y "%g kW"
 set grid xtics ytics
@@ -34,4 +35,11 @@ plot datafile \
         with lines title "Opgewekt door PV1 (kW)", \
     '' using "Time":(column("Ppv2(W)")/1000) \
         with lines title "Opgewekt door PV2 (kW)"
+
+
+#, \
+#    '' using "Time":(column("Temperature(℃)")/10) \
+#        with lines title "Temperature (×10⁰C)", \
+#    '' using "Time":(column("IPM Temperature(℃)")/10) \
+#        with lines lc "red" title "IPM Temperature (×10⁰C)"
 
