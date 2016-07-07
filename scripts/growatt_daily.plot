@@ -25,4 +25,9 @@ plot datafile \
      '' \
      using "Time":"Epv1" \
      with boxes lc rgb '#56b4e9' title "PV1", \
-     '' using "Time":"Epv_total" axes x1y2 with lines lc 'black' title "Cumulatief", \
+     '' \
+     using "Time":"Epv_total" \
+     axes x1y2 with lines lc 'black' title "Cumulatief PV", \
+     '' \
+     using "Time":"Eac_total" \
+     axes x1y2 with lines lc 'blue' title "Cumulatief AC", \
