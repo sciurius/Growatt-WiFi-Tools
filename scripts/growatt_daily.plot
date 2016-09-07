@@ -31,3 +31,9 @@ plot datafile \
      '' \
      using "Time":"Eac_total" \
      axes x1y2 with lines lc 'blue' title "Cumulatief AC", \
+     '' \
+     using "Time":(column("YpvResult")==0?NaN:(column("YpvResult"))) \
+     axes x1y2 with lines lc 'red' title "PV Jaar", \
+     '' \
+     using "Time":(column("YacResult")==0?NaN:(column("YacResult"))) \
+     axes x1y2 with lines lc 'green' title "AC Jaar", \
