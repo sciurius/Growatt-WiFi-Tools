@@ -25,10 +25,13 @@ set key inside left reverse Left
 # The daily accum values are not useful, since they are reset during
 # the day. So use the total energy and subtract the initial value.
 E_init = `perl -an -F, -e '$. == 2 && do { print $F[30]+$F[32];exit }' @datafile`
+Eac_init = `perl -an -F, -e '$. == 2 && do { print $F[23];exit }' @datafile`
 
 plot datafile \
     using "Time":(column("Epv1_total(kWh)")+column("Epv2_total(kWh)")-E_init) \
-        axes x1y2  with lines lw 3 title "Totaal opgewekte energie (kWh)", \
+        axes x1y2  with lines lw 2 title "Totaal opgewekte energie (kWh)", \
+    '' using "Time":(column("Eac_total(kWh)")-Eac_init) \
+        axes x1y2  with lines lw 2 title "Totaal geleverde energie (kWh)", \
     '' using "Time":(column("Ppv1(W)")/1000)+(column("Ppv2(W)")/1000) \
 	with lines lw 2 title "Opgewekt vermogen (kW)", \
     '' using "Time":(column("Ppv1(W)")/1000) \
