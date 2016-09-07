@@ -10,7 +10,7 @@ your installation.
 
 2a. Start proxy server:
 
-   perl growatt_proxy.pl --debug
+   perl growatt_server.pl --debug --remote
 
    make sure it keeps running!
 
@@ -27,23 +27,19 @@ your installation.
 
    make sure it keeps running!
 
-   There are some systemd/growattserver* files to deploy the proxy
+   There are some systemd/growattserver* files to deploy the 
    server using systemd.
 
    The standalone server is like the proxy server, but does not use
    the Growatt server. It just copies the energy data packages to
    local disk.
 
-2c. Start the simple stanalone server.
+2c. For systemd, install the supplied growatt*.socket and
+    growatt*@.service files into /etc/systemd/system . Adjust
+   growatt*@.service to reflect the actual location of the simple
+   server script, and the location where the data should be collected.
 
-   This server should be run using systemd (per connection server) or xinetd.
-
-   For systemd, install the supplied growattserver.socket and
-   growattserver@.service files into /etc/systemd/system .
-   Adjust growattserver@.service to reflect the actual location of the
-   simple server script, and the location where the data should be collected.
-
-   Start the service (as super user):
+   Start the service (as super user), e.g. for the standalone server:
 
    systemctl start growattserver.socket
 
@@ -55,6 +51,16 @@ your installation.
    When deployed using systemd, a logfile will be created in the
    server directory. The name of the logfile is derived from the
    current date, e.g., 20150702.log.
+
+2d. If you get messages like:
+
+    ==== 2016-09-07 14:31:47 client RAW ====
+     0000: 00 01 00 00 00 0c 01 16 41 48 33 30 38 31 31 34  ........AH308114
+     0010: 30 39                                            09              
+
+   (Note bytes 7 and 8 being 01 16)
+
+   Add the command line option "--v1" to the startup command.
 
 3. In the Growatt WiFi module, set the server to the system running
    the proxy or standalone server. A reboot of the module is
@@ -69,7 +75,7 @@ your installation.
    I hope to remove this 'fix' when Growatt finally switches their
    servers to another location.
 
-   The standalone servers don't have nor need this 'fix' code.
+   The standalone server doesn't have nor need this 'fix' code.
 
 4. In the directory where the proxy server is running small data files
    will be created:

@@ -6,6 +6,6 @@ SyslogIdentifier=groprx
 User=jv
 Group=jv
 WorkingDirectory=/home/jv/tmp/
-ExecStart=-/usr/bin/perl /home/jv/wrk/Growatt/scripts/growatt_proxy.pl --debug --systemd
+ExecStart=-/usr/bin/perl /home/jv/wrk/Growatt/scripts/growatt_server.pl --debug --systemd --remote
 StandardInput=socket
 StandardOutput=syslog

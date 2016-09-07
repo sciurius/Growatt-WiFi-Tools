@@ -3,17 +3,23 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Aug 24 20:43:53 2015
-# Update Count    : 203
+# Last Modified On: Thu Sep  8 12:15:28 2016
+# Update Count    : 228
 # Status          : Unknown, Use with caution!
 #
 ################################################################
 #
-# Server for Growatt WiFi.
+# Local server for Growatt WiFi.
 #
 # The Growatt WiFi module communicates with the Growatt server
-# (server.growatt.com, port 5279). This server can be used
-# as a standalone replacement to intercept all traffic.
+# (server.growatt.com, port 5279). This proxy server can be put
+# between de module and the server to intercept all traffic.
+# It can also be run as a standalone server for data logging without
+# involving the Growatt servers.
+#
+# The proxy is transparent, every data package from the module is sent
+# to the server, and vice versa. An extensive logging is produced of
+# all traffic.
 #
 # Data packages that contain energy data from the data logger are
 # written to disk in separate files for later processing.
@@ -23,12 +29,13 @@
 # Usage:
 #
 # In an empty directory, start the server. It will listen to port
-# 5279.
+# 5279. If you provide a remote server name on the command line it will
+# act as a proxy and connect to the remote Growatt server.
 #
 # Using the Growatt WiFi module administrative interface, go to the
 # "STA Interface Setting" and change "Server Address" (default:
 # server.growatt.com) to the name or ip of the system running the
-# server.
+# proxy server.
 # Reboot the WiFi module and re-visit the "STA Interface Setting" page
 # to verify that the "Server Connection State" is "Connected".
 #
@@ -40,7 +47,7 @@
 # 20150703140004.dat
 # ... and so on ...
 #
-# Alternatively, use systemd (or inetd, untested) to start the
+# Alternatively, use systemd (or inetd, untested) to start the proxy
 # server.
 #
 ################################################################
@@ -55,29 +62,37 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.23 );
+my ($my_name, $my_version) = qw( growatt_server 0.50 );
 
 ################ Command line parameters ################
 
 use Getopt::Long 2.13;
 
 # Command line options.
+my $local_host  = "groprx.squirrel.nl";	# proxy server (this host)
 my $local_port  = 5279;		# local port. DO NOT CHANGE
+my $remote_host;		# remote server, if proxy
+#my $remote_host = "server.growatt.com";	# remote server, if proxy
+my $remote_port = 5279;		# remote port. DO NOT CHANGE
 my $timeout;			# 30 minutes
 my $verbose = 0;		# verbose processing
 my $sock_act = 0;		# running through inetd or systemd
+my $vproto = 3;			# protocol version
 
 # Development options (not shown with -help).
-my $debug = 0;			# debugging
+my $debug = 1;			# debugging (currently default)
 my $trace = 0;			# trace (show process)
-my $test = 0;			# test mode.
 
 # Process command line options.
 app_options();
 
+# Setup protocol dependent stuff.
+set_proto();
+
 # Post-processing.
 $timeout //= $sock_act ? 300 : 1800;
-$trace |= ($debug || $test);
+$trace |= $debug;
+$verbose |= $trace;
 
 ################ Presets ################
 
@@ -91,41 +106,55 @@ use IO::Handle;
 use Fcntl;
 use Data::Hexify;
 
-if ( $test ) {
-    test();
-    exit;
-}
-
 my $ioset = IO::Select->new;
 my %socket_map;
 my $s_reload = ".reload";
 my $s_reboot = ".reboot";
+my $s_inject = ".inject";
 
-$debug = 1;			# for the time being
 $| = 1;				# flush standard output
 
 my $server;
-if ( $sock_act ) {
+my $remote_socket;
+my $data_logger;
+
+if ( $sock_act ) {		# running via systemd
     my @tm = localtime(time);
     open( STDOUT, '>>',
 	  sprintf( "%04d%02d%02d.log", 1900+$tm[5], 1+$tm[4], $tm[3] ) );
-    print( ts(), " Starting Growatt server version $my_version",
+    print( ts(), " Starting Growatt ",
+	   $remote_host ? "proxy server for $remote_host" : "server",
+	   " version $my_version",
 	   " on stdin\n" );
     $server = IO::Socket::INET->new;
     $server->fdopen( 0, 'r' );
     print( ts(), " Connection accepted from ",
 	   client_ip($server), "\n") if $debug;
-    $ioset->add($server);
 
-    $socket_map{$server} = $server;
+    if ( $remote_host ) {
+	my $remote = new_conn( $remote_host, $remote_port );
+	print( ts(), " Connection to $remote_host (",
+	       $remote->peerhost, ") port $remote_port established\n")
+	  if $debug;
+
+	$ioset->add($remote);
+
+	$socket_map{$server} = $remote;
+	$socket_map{$remote} = $server;
+	$remote_socket = $remote;
+    }
+
+    $ioset->add($server);
 }
 else {
-    print( ts(), " Starting Growatt server version $my_version",
+    print( ts(), " Starting Growatt ",
+	   $remote_host ? "proxy server for $remote_host" : "server",
+	   " version $my_version",
 	   " on 0.0.0.0:$local_port\n" );
     $server = new_server( '0.0.0.0', $local_port );
     $ioset->add($server);
+    $remote_socket = $server;
 }
-
 
 my $busy;
 while ( 1 ) {
@@ -148,7 +177,7 @@ while ( 1 ) {
     $busy = 1;
     for my $socket ( @sockets ) {
         if ( !$sock_act && $socket == $server ) {
-            new_connection( $server );
+            new_connection( $server, $remote_host, $remote_port );
         }
         else {
             next unless exists $socket_map{$socket};
@@ -156,13 +185,17 @@ while ( 1 ) {
             my $buffer;
             my $len = $socket->sysread($buffer, 4096);
             if ( $len ) {
+		my $did = 0;
 		while ( my $msg = split_msg( \$buffer ) ) {
+		    $did++;
 		    $msg = preprocess_msg( $socket, $msg );
 		    foreach ( process_msg( $socket, $msg ) ) {
 			$dest->syswrite($_);
 			postprocess_msg( $socket, $_ );
 		    }
 		}
+		print( "==== ", ts(), " client RAW ====\n", Hexify(\$buffer), "\n" )
+		  if !$did && $debug;
             }
             else {
                 close_connection($socket);
@@ -176,6 +209,20 @@ while ( 1 ) {
 }
 
 ################ Subroutines ################
+
+sub new_conn {
+    my ($host, $port) = @_;
+    for ( 0..4 ) {
+	my $s = IO::Socket::INET->new( PeerAddr => $host,
+				       PeerPort => $port
+				     );
+	return $s if $s;
+	print( "==== ", ts(), " Unable to connect to $host:$port: $!",
+	       " (retrying) ====\n\n" );
+	sleep 2 + rand(2);
+    }
+    die( "==== ", ts(), " Unable to connect to $host:$port: $! ====\n\n" );
+}
 
 sub new_server {
     my ($host, $port) = @_;
@@ -195,6 +242,8 @@ sub ts {
 
 sub new_connection {
     my $server = shift;
+    my $remote_host = shift;
+    my $remote_port = shift;
 
     my $client = $server->accept;
     my $client_ip = client_ip($client);
@@ -203,18 +252,40 @@ sub new_connection {
 
     $ioset->add($client);
 
-    $socket_map{$client} = $client;
+    if ( $remote_host ) {
+	my $remote = new_conn( $remote_host, $remote_port );
+	print( ts(), " Connection to $remote_host (",
+	       $remote->peerhost, ") port $remote_port established\n") if $debug;
+
+	$ioset->add($remote);
+	$remote_socket = $remote;
+	$socket_map{$client} = $remote;
+	$socket_map{$remote} = $client;
+    }
+    else {
+	$remote_socket = $client;
+	$socket_map{$client} = $client;
+    }
 }
 
 sub close_connection {
     my $client = shift;
     my $client_ip = client_ip($client);
+    my $remote = $socket_map{$client};
 
-    $ioset->remove($client);
-
-    delete $socket_map{$client};
-
-    $client->close;
+    if ( $remote == $client ) {
+	$ioset->remove($client);
+	delete $socket_map{$client};
+	$client->close;
+    }
+    else {
+	$ioset->remove($client);
+	$ioset->remove($remote);
+	delete $socket_map{$client};
+	delete $socket_map{$remote};
+	$client->close;
+	$remote->close;
+    }
 
     print( ts(), " Connection from $client_ip closed\n" ) if $debug;
 }
@@ -224,12 +295,49 @@ sub client_ip {
     return ( eval { $client->peerhost } || $ENV{REMOTE_ADDR} || "?.?.?.?" );
 }
 
-my $data_logger;
+# Messages always start with pack("nn", HB1, HB2)
+sub HB1();	# first word
+sub HB2();	# second word
+my $msg_pat;	# to match a message start
+
+sub set_proto {
+    if ( $vproto == 1 ) {
+	# WiFi sticks version 1.0.0.0 use these.
+	eval "sub HB1() { 1 } sub HB2() { 0 }";
+    }
+    else {
+	# WiFi sticks version >= 3.0.0.0 use these.
+	eval "sub HB1() { 1 } sub HB2() { 2 }";
+    }
+    $msg_pat = eval "qr(".pack("nn", HB1, HB2).")";
+}
 
 sub split_msg {
     my ( $bufref ) = @_;
+    my $msg;
 
-    if ( $$bufref =~ /^\x00\x01\x00\x02(..)/ ) {
+    # Convenient telnet commands for testing.
+
+    if ( $$bufref =~ /^ping(?:\s+(\S+))?/ ) {
+	$msg = m_ping( $1 // $data_logger // "AH12345678" );
+    }
+    elsif ( $$bufref =~ /^ahoy(?:\s+(\S+))?/ ) {
+	$msg = pack( "n[4]A[10]A[10].",
+			HB1, HB2, 0xd9, 0x0103,
+			$1 // "AH12345678", "OP24510017", 6 + 0xd9 );
+    }
+    elsif ( $$bufref =~ /^data/ ) {
+	$msg = pack( "n[4]A[10]A[10].",
+			HB1, HB2, 0xd9, 0x0104,
+			$1 // "AH12345678", "OP24510017", 6 + 0xd9 );
+    }
+    elsif ($$bufref =~ /^q(?:uit)?/ ) {
+	print( ts(), " Server terminating\n" );
+	exit 0;
+    }
+
+    $$bufref = $msg if $msg;
+    if ( $$bufref =~ /^$msg_pat(..)/o ) {
 	my $length = unpack( "n", $1 );
 	return substr( $$bufref, 0, $length+6, '' );
     }
@@ -238,7 +346,7 @@ sub split_msg {
 
 sub disassemble {
     my ( $msg ) = @_;
-    return unless $msg =~ /^\x00\x01\x00\x02(..)(..)/;
+    return unless $msg =~ /^$msg_pat(..)(..)/o;
 
     my $length = unpack( "n", $1 );
     return { length => $length,
@@ -251,44 +359,58 @@ sub assemble {
     my ( $msg ) = @_;
 
     # Only data and type is used.
-    return pack( "n4", 1, 2, 2+length($msg->{data}), $msg->{type} )
+    return pack( "n4", HB1, HB2, 2+length($msg->{data}), $msg->{type} )
       . $msg->{data};
 }
 
 sub preprocess_msg {
     my ( $socket, $msg ) = @_;
 
-    # Convenient telnet commands for testing.
+    my $tag = $socket != $remote_socket ? "client" : "server";
 
-    if ( $msg =~ /^ping(?:\s+(\S+))?/ ) {
-	$msg = m_ping( $1 // $data_logger // "AH12345678" );
+    return $msg unless $remote_host;
+
+    my $orig = $msg;
+    my $ts = ts();
+    my $a = disassemble($msg);
+
+    # Make the Growatt server think we're directly talking to him.
+
+    if ( $a->{type} eq 0x0119 ) {	# query settings
+	if ( $a->{data} =~ /^(.{10}\x00(?:\x11|\x13))/ ) {
+	    # Fake items 11 and 13 to reflect the growatt server.
+	    $a->{data} = $1
+	      . pack('n', length($remote_host)) . $remote_host;
+	    $msg = assemble($a);
+	}
     }
-    elsif ( $msg =~ /^ahoy(?:\s+(\S+))?/ ) {
-	$msg = pack( "n[4]A[10]A[10].",
-			1, 2, 0xd9, 0x0103,
-			$1 // "AH12345678", "OP24510017", 6 + 0xd9 );
+    # And refuse to change it :) .
+    elsif ( $a->{type} eq 0x0118 ) {	# update settings
+	if ( $a->{data} =~ /^(.{10}\x00\x13)/ ) {
+	    # Refuse to change config item 13.
+	    $a->{data} = $1
+	      . pack('n', length($local_host)) . $local_host;
+	    $msg = assemble($a);
+	}
     }
-    elsif ( $msg =~ /^data/ ) {
-	$msg = pack( "n[4]A[10]A[10].",
-			1, 2, 0xd9, 0x0104,
-			$1 // "AH12345678", "OP24510017", 6 + 0xd9 );
-    }
-    elsif ($msg =~ /^q(?:uit)?/ ) {
-	print( ts(), " Server terminating\n" );
-	exit 0;
+
+    if ( $orig ne $msg ) {
+	print( "==== $ts $tag NEEDFIX ====\n", Hexify(\$orig), "\n",
+	       "==== $ts $tag FIXED ====\n". Hexify(\$msg), "\n");
     }
 
     return $msg;
 }
 
 my $identified;
-BEGIN { $identified = 1 }	# skip identification
 
 sub process_msg {
     my ( $socket, $msg ) = @_;
 
     # Processes a message.
     # Returns nothing, a (new) message, or a list of messages.
+
+    return $msg if $remote_host; # nothing for us proxy
 
     my $tag = "client";
 
@@ -318,31 +440,9 @@ sub process_msg {
 	  : ( m_ack( $m->{type} ), m_identify() );
     }
 
-    # Dump energy reports to individual files.
-    if ( $data_logger && $m->{type} == 0x0104 && $m->{length} > 210 ) {
-
-	#### TODO: If supporting more than one inverter,
-	#### prefix the filename by the inverter id.
-
-	my $fn = $ts;
-	$fn =~ s/[- :]//g;
-	$fn .= ".dat";
-	$tag .= " DATA";
-
-	my $fd;
-
-	if ( sysopen( $fd, $fn, O_WRONLY|O_CREAT )
-	     and syswrite( $fd, $msg ) == length($msg)
-	     and close($fd) ) {
-	    # OK
-	}
-	else {
-	    $tag .= " ERROR $fn: $!";
-	}
-
-	# Dump message in hex.
-	print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $debug;
-
+    # Save data packets.
+    if ( $m->{type} == 0x0104 && $m->{length} > 210 ) {
+	save_data( $ts, $msg, $tag );
 	return m_ack( $m->{type} );
     }
 
@@ -361,7 +461,7 @@ sub process_msg {
 sub postprocess_msg {
     my ( $socket, $msg ) = @_;
 
-    my $tag = "server";
+    my $tag = $socket != $remote_socket ? "client" : "server";
 
     my $ts = ts();
 
@@ -374,7 +474,8 @@ sub postprocess_msg {
     # PING.
     if ( $m->{type} == 0x0116 && $m->{length} == 12 ) {
 	print( "==== $ts $tag PING ",
-	       substr( $m->{data}, 0, 10 ), " ====\n\n" ) if $debug;
+	       $data_logger = substr( $m->{data}, 0, 10 ),
+	       " ====\n\n" ) if $debug;
 	return;
     }
 
@@ -389,7 +490,8 @@ sub postprocess_msg {
 	# For development: If there's a file $s_reload in the current
 	# directory, stop this instance of the server.
 	# When invoked via the "run_server.sh" script this will
-	# immedeately start a new server instance.
+	# immedeately start a new server instance. Otherwise, systemd
+	# or inetd will start a new instance when the client reconnects.
 	# This can be used to upgrade to a new version of the
 	# server.
 	if ( -f $s_reload ) {
@@ -399,6 +501,7 @@ sub postprocess_msg {
 	    exit 0;
 	}
 
+	# Similar trick to reboot the WiFi stick.
 	if ( -f $s_reboot ) {
 	    unlink($s_reboot);
 	    my $m = m_reboot();
@@ -406,66 +509,121 @@ sub postprocess_msg {
 	    $socket_map{$socket}->syswrite($m);
 	}
 
+	# Similar trick to insert arbitrary data.
+	if ( -f $s_inject ) {
+	    open( my $fd, '<', $s_inject );
+	    my $data = do { local $/; <$fd> };
+	    if ( $data ) {
+		$data = readhex($data)
+	    }
+	    unlink($s_inject);
+	    if ( $data =~ m/^$msg_pat(..)/o
+		 && unpack("n", $1)+6 == length($data) ) {
+		print( "==== $ts INJECT ====\n", Hexify(\$data), "\n" );
+		$socket_map{$socket}->syswrite($data);
+	    }
+	    else {
+		print( "==== $ts INJECT ERROR (length check) ====\n", Hexify(\$data), "\n" );
+	    }
+	}
+
 	return;
     }
 
-    # Dump energy reports to individual files.
+    # Dump energy reports to individual files. This is for the proxy only,
+    # the standalaone server handles this in process().
     if ( $m->{type} == 0x0104 && $m->{length} > 210 ) {
+	save_data( $ts, $msg, $tag );
+	return;
+    }
 
-	#### TODO: If supporting more than one inverter,
-	#### prefix the filename by the inverter id.
-
-	my $fn = $ts;
-	$fn =~ s/[- :]//g;
-	$fn .= ".dat";
-
-	my $fd;
-
-	if ( sysopen( $fd, $fn, O_WRONLY|O_CREAT )
-	     and syswrite( $fd, $msg ) == length($msg)
-	     and close($fd) ) {
-	    # OK
+    # Miscellaneous. Try add info to tag.
+    if ( $m->{type} == 0x0103 ) {
+	$tag .= " AHOY" if $m->{length} > 210;
+    }
+    elsif ( $m->{type} == 0x0119 ) {
+	if ( $socket == $remote_socket ) {
+	    $tag .= " CONFIGQUERY";
 	}
 	else {
-	    $tag .= " ERROR $fn: $!";
+	    $tag .= sprintf(" CONFIG %02x",
+			    unpack("n", substr($m->{data},
+					       length($data_logger),
+					       2)));
 	}
-
-	# Dump message in hex.
-	print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $trace;
-
-	return;
     }
-
-    # Unhandled.
-    $tag .= " AHOY" if $m->{type} == 0x0103 && $m->{length} > 210;
     print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $debug;
     return;
+}
+
+my $prev_data;
+
+sub save_data {
+    my ( $ts, $msg, $tag ) = @_;
+
+    if ( $prev_data && $msg eq $prev_data ) {
+	$tag .= " DUP";
+	print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $trace;
+	return;
+    }
+    $prev_data = $msg;
+
+    #### TODO: If supporting more than one inverter,
+    #### prefix the filename by the inverter id.
+
+    my $fn = $ts;
+    $fn =~ s/[- :]//g;
+    $fn .= ".dat";
+    $tag .= " DATA";
+
+    my $fd;
+
+    if ( sysopen( $fd, $fn, O_WRONLY|O_CREAT )
+	 and syswrite( $fd, $msg ) == length($msg)
+	 and close($fd) ) {
+	# OK
+    }
+    else {
+	$tag .= " ERROR $fn: $!";
+    }
+
+    # Dump message in hex.
+    print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $trace;
 }
 
 sub m_ping {
     my ( $dl ) = @_;
     $dl //= $data_logger;
-    pack( "nnnn", 1, 2, 2+length($dl), 0x0116 ) . $dl;
+    pack( "nnnn", HB1, HB2, 2+length($dl), 0x0116 ) . $dl;
 }
 
 sub m_ack {
-    pack( "nnnnC", 1, 2, 3, $_[0], 0 );
+    pack( "nnnnC", HB1, HB2, 3, $_[0], 0 );
 }
 
 sub m_identify {
     my ( $dl ) = @_;
     $dl //= $data_logger;
     pack( "n[4]A[10]n[2]",
-	  1, 2, 6+length($dl), 0x0119,
+	  HB1, HB2, 6+length($dl), 0x0119,
 	  $dl, 4, 0x15 );
 }
 
 sub m_reboot {
     my ( $dl ) = @_;
     $dl //= $data_logger;
-    pack( "n[4]A[10]n[2]s",
-	  1, 2, 7+length($dl), 0x0118,
-	  $dl, 20, 1, "1" );
+    pack( "n[4]A[10]n[2]A",
+	  HB1, HB2, 7+length($dl), 0x0118,
+	  $dl, 0x20, 1, "1" );
+}
+
+sub readhex {
+    my $d = shift;
+    $d =~ s/^  ....: //gm;
+    $d =~ s/  .*$//gm;
+    $d =~ s/\s+//g;
+    $d = pack("H*", $d);
+    $d;
 }
 
 ################ Command line options ################
@@ -479,12 +637,14 @@ sub app_options {
 
     if ( !GetOptions(
 		     'listen=i' => \$local_port,
+		     'remote:s'  => \$remote,
 		     'timeout=i' => \$timeout,
 		     'inetd|systemd' => \$sock_act,
+		     'v1'	=> sub { $vproto = 1 },
+		     'v3'	=> sub { $vproto = 3 },
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
-		     'test'	=> \$test,
 		     'help|?'	=> \$help,
 		     'debug'	=> \$debug,
 		    ) or $help )
@@ -494,6 +654,11 @@ sub app_options {
     app_ident() if $ident;
 
     $local_port ||= 5279;
+    $remote = "server.growatt.com:5279"
+      if defined($remote) && $remote eq "";
+    if ( $remote ) {
+	( $remote_host, $remote_port ) = split( /:/, $remote );
+    }
 }
 
 sub app_ident {
@@ -506,8 +671,10 @@ sub app_usage {
     print STDERR <<EndOfUsage;
 Usage: $0 [options]
     --listen=NNNN	Local port to listen to (must be $local_port)
+    --remote=XXXX:NNNN	Remote server name and port (must be $remote_host:$remote_port)
     --timeout=NNN	Timeout
     --inetd  --systemd	Running from inetd/systemd
+    --v1  --v3		Select protocol version
     --help		This message
     --ident		Shows identification
     --verbose		More verbose information
@@ -515,32 +682,3 @@ Usage: $0 [options]
 EndOfUsage
     exit $exit if defined $exit && $exit != 0;
 }
-
-sub readhex {
-    local $/;
-    my $d = <DATA>;
-    $d =~ s/^  ....: //gm;
-    $d =~ s/  .*$//gm;
-    $d =~ s/\s+//g;
-    $d = pack("H*", $d);
-    $d;
-}
-
-sub test {
-    my $msg = readhex();
-    my $new = preprocess_msg(123,$msg);
-    print( "ORIG:\n", Hexify(\$msg), "\n\nNEW:\n", Hexify(\$new), "\n\n");
-}
-
-__DATA__
-  0000: 00 01 00 02 00 21 01 19 41 48 34 34 34 36 30 34  .....!..AH444604
-  0010: 37 37 00 10 00 11 41 43 3a 43 46 3a 32 33 3a 33  77....AC:CF:23:3
-  0020: 44 3a 38 31 3a 45 35 00 01 00 02 00 22 01 19 41  D:81:E5....."..A
-  0030: 48 34 34 34 36 30 34 37 37 00 11 00 12 67 72 6f  H44460477....gro
-  0040: 70 72 78 2e 73 71 75 69 72 72 65 6c 2e 6e 6c 00  prx.squirrel.nl.
-  0050: 01 00 02 00 14 01 19 41 48 34 34 34 36 30 34 37  .......AH4446047
-  0060: 37 00 12 00 04 35 32 37 39 00 01 00 02 00 22 01  7....5279.....".
-  0070: 19 41 48 34 34 34 36 30 34 37 37 00 13 00 12 67  .AH44460477....g
-  0080: 72 6f 70 72 78 2e 73 71 75 69 72 72 65 6c 2e 6e  roprx.squirrel.n
-  0090: 6c 00 01 00 02 00 17 01 19 41 48 34 34 34 36 30  l........AH44460
-  00a0: 34 37 37 00 15 00 07 33 2e 31 2e 30 2e 30        477....3.1.0.0  
