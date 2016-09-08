@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Thu Sep  8 12:15:28 2016
-# Update Count    : 228
+# Last Modified On: Thu Sep  8 22:11:11 2016
+# Update Count    : 235
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -47,6 +47,10 @@
 # 20150703140004.dat
 # ... and so on ...
 #
+# The server will also store some communication data in files named
+# ahoy.dat, configXX.dat (where XX is a hex number) and data.dat.
+# This is for debugging purposes, and can be used by the client emulator.
+#
 # Alternatively, use systemd (or inetd, untested) to start the proxy
 # server.
 #
@@ -62,7 +66,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.50 );
+my ($my_name, $my_version) = qw( growatt_server 0.51 );
 
 ################ Command line parameters ################
 
@@ -539,17 +543,22 @@ sub postprocess_msg {
 
     # Miscellaneous. Try add info to tag.
     if ( $m->{type} == 0x0103 ) {
-	$tag .= " AHOY" if $m->{length} > 210;
+	if ( $m->{length} > 210 ) {
+	    $tag .= " AHOY";
+	    save_msg( $msg, "ahoy.dat" );
+	}
     }
     elsif ( $m->{type} == 0x0119 ) {
 	if ( $socket == $remote_socket ) {
 	    $tag .= " CONFIGQUERY";
 	}
 	else {
-	    $tag .= sprintf(" CONFIG %02x",
-			    unpack("n", substr($m->{data},
-					       length($data_logger),
-					       2)));
+	    my $hx = sprintf("%02x",
+			     unpack("n", substr($m->{data},
+						length($data_logger),
+						2)));
+	    $tag .= " CONFIG $hx";
+	    save_msg( $msg, "config$hx.dat" );
 	}
     }
     print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $debug;
@@ -575,20 +584,26 @@ sub save_data {
     $fn =~ s/[- :]//g;
     $fn .= ".dat";
     $tag .= " DATA";
-
-    my $fd;
-
-    if ( sysopen( $fd, $fn, O_WRONLY|O_CREAT )
-	 and syswrite( $fd, $msg ) == length($msg)
-	 and close($fd) ) {
-	# OK
-    }
-    else {
-	$tag .= " ERROR $fn: $!";
-    }
+    save_msg( $msg, $fn )
+      or $tag .= " ERROR $fn: $!";
 
     # Dump message in hex.
     print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $trace;
+}
+
+sub save_msg {
+    my ( $msg, $fn ) = @_;
+
+    my $fd;
+    if ( sysopen( $fd, $fn, O_WRONLY|O_CREAT )
+	 and syswrite( $fd, $msg ) == length($msg)
+	 and close($fd) ) {
+	return 1;
+    }
+    else {
+	print( "==== ERROR saving $fn: $! ====\n" );
+    }
+    return;
 }
 
 sub m_ping {
