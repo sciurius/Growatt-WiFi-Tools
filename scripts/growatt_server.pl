@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Thu Sep  8 22:11:11 2016
-# Update Count    : 235
+# Last Modified On: Fri Sep  9 09:26:21 2016
+# Update Count    : 238
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -66,7 +66,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.51 );
+my ($my_name, $my_version) = qw( growatt_server 0.52 );
 
 ################ Command line parameters ################
 
@@ -586,6 +586,7 @@ sub save_data {
     $tag .= " DATA";
     save_msg( $msg, $fn )
       or $tag .= " ERROR $fn: $!";
+    save_msg( $msg, "data.dat" );
 
     # Dump message in hex.
     print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $trace;

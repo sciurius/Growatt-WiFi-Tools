@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Aug 25 20:38:22 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Thu Sep  8 22:09:04 2016
-# Update Count    : 76
+# Last Modified On: Fri Sep  9 09:26:10 2016
+# Update Count    : 82
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -39,7 +39,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_client 0.01 );
+my ($my_name, $my_version) = qw( growatt_client 0.02 );
 
 ################ Command line parameters ################
 
@@ -109,14 +109,14 @@ while ( 1 ) {
     unless ( @sockets ) {
 
 	if ( $now - $last_ping > 180 ) {
-	    my $msg = m_ping();
+	    my $msg = ping();
 	    warn( "==== ", ts(), " client PING $datalogger ==$state==\n\n" );
 	    $server->syswrite($msg);
 	    $last_ping = $now;
 	}
 
 	if ( $state == 0 ) {
-	    my $msg = m_ahoy();
+	    my $msg = ahoy();
 	    warn( "==== ", ts(), " client AHOY ==$state==\n\n" );
 	    $server->syswrite($msg);
 	    $state = 1;
@@ -126,18 +126,21 @@ while ( 1 ) {
 	    $state = 0;
 	}
 	elsif ( $state == 2 ) {
-	    next unless $now - $last_data > 300;
+	    next unless $now - $last_data > 20;
 	    if ( my $msg = new_data() ) {
-		warn( "==== ", ts(), " client DATA ==$state==\n\n" );
+		warn( "==== ", ts(), " client DATA ==$state==\n", Hexify(\$msg), "\n" );
 		$server->syswrite($msg);
-		# Force retry in 20 seconds.
-		# ACK will update the timestamp appropriately.
-		$last_data = $now + 280;
+		$last_data = $now;
 		$state = 3;
 	    }
 	}
-	elsif ( $state == 3 ) {
-	    $state = 2 if $now - $last_data > 300;
+	elsif ( $state == 3 && ( $now - $last_data > 20 ) ) {
+	    # No ACK yet, retransmit.
+	    if ( my $msg = new_data(1) ) {
+		warn( "==== ", ts(), " client DATA retry ==$state==\n\n" );
+		$server->syswrite($msg);
+		$last_data = $now;
+	    }
 	}
 	next;
     }
@@ -190,7 +193,7 @@ sub HB2();	# second word
 my $msg_pat;	# to match a message start
 
 sub set_proto {
-    my $ahoy = m_ahoy();
+    my $ahoy = ahoy();
     $datalogger = substr( $ahoy, 8, 10 );
     if ( substr( $ahoy, 3, 1 ) eq "\x00" ) {
 	# WiFi sticks version 1.0.0.0 use these.
@@ -268,7 +271,6 @@ sub process_msg {
 	    $state = 3
 	}
 	if ( $state == 3 && $m->{type} == 0x0104 ) {
-	    $last_data = $now;
 	    $state = 2;
 	}
 	return;
@@ -283,13 +285,12 @@ sub process_msg {
 		$server->syswrite($msg);
 		$msg = "";
 	    }
-	    my $m = m_config($i);
+	    my $m = config($i);
 	    next unless $m;
 	    $msg .= $m;
 	    warn( "==== $ts client ==$state==\n", Hexify(\$m), "\n" );
 	}
 	$server->syswrite($msg);
-	$state = 0;
 	return;
     }
 
@@ -298,7 +299,7 @@ sub process_msg {
     return;
 }
 
-sub m_ping {
+sub ping {
     pack( "n[4]A[10]",
 	  HB1, HB2, 2+length($datalogger), 0x0116,
 	  $datalogger );
@@ -317,15 +318,15 @@ sub getdata {
     return;
 }
 
-sub m_ahoy {
+sub ahoy {
     getdata("ahoy") or die("Missing AHOY data\n");
 }
 
-sub m_data {
+sub data {
     getdata("data");
 }
 
-sub m_config {
+sub config {
     my ( $ix ) = @_;
     my $xix = sprintf("config%02x",$ix);
     getdata($xix);
