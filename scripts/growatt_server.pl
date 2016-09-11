@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Fri Sep  9 09:26:21 2016
-# Update Count    : 238
+# Last Modified On: Sun Sep 11 15:41:23 2016
+# Update Count    : 239
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -66,7 +66,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.52 );
+my ($my_name, $my_version) = qw( growatt_server 0.53 );
 
 ################ Command line parameters ################
 
@@ -147,7 +147,9 @@ if ( $sock_act ) {		# running via systemd
 	$socket_map{$remote} = $server;
 	$remote_socket = $remote;
     }
-
+    else {
+	$socket_map{$server} = $server;
+    }
     $ioset->add($server);
 }
 else {
