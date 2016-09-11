@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Sep 11 15:41:23 2016
-# Update Count    : 239
+# Last Modified On: Sun Sep 11 15:45:01 2016
+# Update Count    : 241
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -81,7 +81,6 @@ my $remote_port = 5279;		# remote port. DO NOT CHANGE
 my $timeout;			# 30 minutes
 my $verbose = 0;		# verbose processing
 my $sock_act = 0;		# running through inetd or systemd
-my $vproto = 3;			# protocol version
 
 # Development options (not shown with -help).
 my $debug = 1;			# debugging (currently default)
@@ -89,9 +88,6 @@ my $trace = 0;			# trace (show process)
 
 # Process command line options.
 app_options();
-
-# Setup protocol dependent stuff.
-set_proto();
 
 # Post-processing.
 $timeout //= $sock_act ? 300 : 1800;
@@ -307,6 +303,21 @@ sub HB2();	# second word
 my $msg_pat;	# to match a message start
 
 sub set_proto {
+    my ( $msg ) = @_;
+
+    my $vproto = 3;
+    my @a = unpack( "nnnn", $msg );
+    if ( $a[0] == 1
+         &&
+         ( $a[1] == 0 || $a[1] == 2 )
+         &&
+         $a[2] >= 3
+         &&
+         ( $a[3] >= 0x103 && $a[3] <= 0x119 )
+       ) {
+        $vproto = 1 if $a[1] == 0;
+    }
+
     if ( $vproto == 1 ) {
 	# WiFi sticks version 1.0.0.0 use these.
 	eval "sub HB1() { 1 } sub HB2() { 0 }";
@@ -321,6 +332,9 @@ sub set_proto {
 sub split_msg {
     my ( $bufref ) = @_;
     my $msg;
+
+    # Infer protocol version, if needed.
+    set_proto($$bufref) unless $msg_pat;
 
     # Convenient telnet commands for testing.
 
@@ -658,8 +672,6 @@ sub app_options {
 		     'remote:s'  => \$remote,
 		     'timeout=i' => \$timeout,
 		     'inetd|systemd' => \$sock_act,
-		     'v1'	=> sub { $vproto = 1 },
-		     'v3'	=> sub { $vproto = 3 },
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
@@ -692,7 +704,6 @@ Usage: $0 [options]
     --remote=XXXX:NNNN	Remote server name and port (must be $remote_host:$remote_port)
     --timeout=NNN	Timeout
     --inetd  --systemd	Running from inetd/systemd
-    --v1  --v3		Select protocol version
     --help		This message
     --ident		Shows identification
     --verbose		More verbose information

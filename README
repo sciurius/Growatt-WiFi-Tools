@@ -52,16 +52,6 @@ your installation.
    server directory. The name of the logfile is derived from the
    current date, e.g., 20150702.log.
 
-2d. If you get messages like:
-
-    ==== 2016-09-07 14:31:47 client RAW ====
-     0000: 00 01 00 00 00 0c 01 16 41 48 33 30 38 31 31 34  ........AH308114
-     0010: 30 39                                            09              
-
-   (Note bytes 7 and 8 being 01 16)
-
-   Add the command line option "--v1" to the startup command.
-
 3. In the Growatt WiFi module, set the server to the system running
    the proxy or standalone server. A reboot of the module is
    neccessary.
