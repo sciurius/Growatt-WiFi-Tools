@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Sep 11 15:45:01 2016
-# Update Count    : 241
+# Last Modified On: Sun Sep 11 15:47:01 2016
+# Update Count    : 242
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -66,7 +66,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.53 );
+my ($my_name, $my_version) = qw( growatt_server 0.54 );
 
 ################ Command line parameters ################
 
