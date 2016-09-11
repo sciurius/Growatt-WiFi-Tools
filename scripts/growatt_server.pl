@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Sep 11 15:47:01 2016
-# Update Count    : 242
+# Last Modified On: Sun Sep 11 20:08:45 2016
+# Update Count    : 244
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -66,7 +66,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.54 );
+my ($my_name, $my_version) = qw( growatt_server 0.55 );
 
 ################ Command line parameters ################
 
@@ -115,7 +115,7 @@ my $s_inject = ".inject";
 $| = 1;				# flush standard output
 
 my $server;
-my $remote_socket;
+my $remote_socket = 0;
 my $data_logger;
 
 if ( $sock_act ) {		# running via systemd
