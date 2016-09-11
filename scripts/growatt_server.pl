@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Sep 11 20:08:45 2016
-# Update Count    : 244
+# Last Modified On: Sun Sep 11 20:28:11 2016
+# Update Count    : 248
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -47,12 +47,11 @@
 # 20150703140004.dat
 # ... and so on ...
 #
-# The server will also store some communication data in files named
-# ahoy.dat, configXX.dat (where XX is a hex number) and data.dat.
-# This is for debugging purposes, and can be used by the client emulator.
+# You can specify the directories for the data and the logfile with
+# command line options.
 #
-# Alternatively, use systemd (or inetd, untested) to start the proxy
-# server.
+# For best results use systemd (or inetd, untested) to start the proxy
+# server. See the scripts in the systemd directory.
 #
 ################################################################
 
@@ -66,7 +65,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.55 );
+my ($my_name, $my_version) = qw( growatt_server 0.56 );
 
 ################ Command line parameters ################
 
@@ -81,6 +80,8 @@ my $remote_port = 5279;		# remote port. DO NOT CHANGE
 my $timeout;			# 30 minutes
 my $verbose = 0;		# verbose processing
 my $sock_act = 0;		# running through inetd or systemd
+my $logdir;			# where to put the logfile
+my $datadir;			# where to put the data packages
 
 # Development options (not shown with -help).
 my $debug = 1;			# debugging (currently default)
@@ -91,6 +92,10 @@ app_options();
 
 # Post-processing.
 $timeout //= $sock_act ? 300 : 1800;
+
+$datadir =~ s/\/+$//;
+$logdir =~ s/\/+$//;
+
 $trace |= $debug;
 $verbose |= $trace;
 
@@ -121,7 +126,8 @@ my $data_logger;
 if ( $sock_act ) {		# running via systemd
     my @tm = localtime(time);
     open( STDOUT, '>>',
-	  sprintf( "%04d%02d%02d.log", 1900+$tm[5], 1+$tm[4], $tm[3] ) );
+	  sprintf( "%s/%04d%02d%02d.log", $logdir,
+		   1900+$tm[5], 1+$tm[4], $tm[3] ) );
     print( ts(), " Starting Growatt ",
 	   $remote_host ? "proxy server for $remote_host" : "server",
 	   " version $my_version",
@@ -561,7 +567,7 @@ sub postprocess_msg {
     if ( $m->{type} == 0x0103 ) {
 	if ( $m->{length} > 210 ) {
 	    $tag .= " AHOY";
-	    save_msg( $msg, "ahoy.dat" );
+	    # save_msg( $msg, "ahoy.dat" );
 	}
     }
     elsif ( $m->{type} == 0x0119 ) {
@@ -574,7 +580,7 @@ sub postprocess_msg {
 						length($data_logger),
 						2)));
 	    $tag .= " CONFIG $hx";
-	    save_msg( $msg, "config$hx.dat" );
+	    # save_msg( $msg, "config$hx.dat" );
 	}
     }
     print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $debug;
@@ -598,11 +604,12 @@ sub save_data {
 
     my $fn = $ts;
     $fn =~ s/[- :]//g;
+    $fn = $datadir . "/" . $fn;
     $fn .= ".dat";
     $tag .= " DATA";
     save_msg( $msg, $fn )
       or $tag .= " ERROR $fn: $!";
-    save_msg( $msg, "data.dat" );
+    # save_msg( $msg, "data.dat" );
 
     # Dump message in hex.
     print( "==== $ts $tag ====\n", Hexify(\$msg), "\n" ) if $trace;
@@ -672,6 +679,8 @@ sub app_options {
 		     'remote:s'  => \$remote,
 		     'timeout=i' => \$timeout,
 		     'inetd|systemd' => \$sock_act,
+		     'datadir=s' => \$datadir,
+		     'logdir=s'	=> \$logdir,
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
 		     'trace'	=> \$trace,
@@ -689,6 +698,8 @@ sub app_options {
     if ( $remote ) {
 	( $remote_host, $remote_port ) = split( /:/, $remote );
     }
+    $datadir ||= ".";
+    $logdir  ||= ".";
 }
 
 sub app_ident {
@@ -704,6 +715,8 @@ Usage: $0 [options]
     --remote=XXXX:NNNN	Remote server name and port (must be $remote_host:$remote_port)
     --timeout=NNN	Timeout
     --inetd  --systemd	Running from inetd/systemd
+    --logdir=XXX	Where to put the logfiles
+    --datadir=XXX	Where to put the datafiles
     --help		This message
     --ident		Shows identification
     --verbose		More verbose information
