@@ -23,10 +23,12 @@ set xtics font "Liberation Sans Narrow,12";
 
 # If the graph is smaller, use 2-day tics.
 if ( xwidth < 800 ) {
-    set xtics mstart,2*daysecs,mend format "%1d" time
+    set xtics format "%1d"
+    set xtics mstart,2*daysecs,mend
 }
 else {
-    set xtics mstart,daysecs,mend format "%1d" time
+    set xtics format "%1d"
+    set xtics mstart,daysecs,mend
 }
 
 # No minor tics.
