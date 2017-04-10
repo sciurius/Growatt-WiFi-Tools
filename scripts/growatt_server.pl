@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Sun Sep 11 20:28:11 2016
-# Update Count    : 248
+# Last Modified On: Mon Oct 17 09:50:57 2016
+# Update Count    : 249
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -65,7 +65,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.56 );
+my ($my_name, $my_version) = qw( growatt_server 0.57 );
 
 ################ Command line parameters ################
 
@@ -488,6 +488,7 @@ sub postprocess_msg {
     my ( $socket, $msg ) = @_;
 
     my $tag = $socket != $remote_socket ? "client" : "server";
+    $tag = "server" unless $remote_host;
 
     my $ts = ts();
 
