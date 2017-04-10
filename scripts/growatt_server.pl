@@ -3,8 +3,8 @@
 # Author          : Johan Vromans
 # Created On      : Tue Jul  7 21:59:04 2015
 # Last Modified By: Johan Vromans
-# Last Modified On: Mon Oct 17 09:50:57 2016
-# Update Count    : 249
+# Last Modified On: Mon Apr 10 22:34:52 2017
+# Update Count    : 263
 # Status          : Unknown, Use with caution!
 #
 ################################################################
@@ -65,7 +65,7 @@ use strict;
 # Package name.
 my $my_package = 'Growatt WiFi Tools';
 # Program name and version.
-my ($my_name, $my_version) = qw( growatt_server 0.57 );
+my ($my_name, $my_version) = qw( growatt_server 0.58 );
 
 ################ Command line parameters ################
 
@@ -82,6 +82,7 @@ my $verbose = 0;		# verbose processing
 my $sock_act = 0;		# running through inetd or systemd
 my $logdir;			# where to put the logfile
 my $datadir;			# where to put the data packages
+my $multi;			# for multiple inverters
 
 # Development options (not shown with -help).
 my $debug = 1;			# debugging (currently default)
@@ -451,16 +452,26 @@ sub process_msg {
 
     # PING.
     if ( $m->{type} == 0x0116 && $m->{length} == 12 ) {
+	my $dl;
 	print( "==== $ts $tag PING ",
-	       $data_logger = substr( $m->{data}, 0, 10 ),
+	       $dl = substr( $m->{data}, 0, 10 ),
 	       " ====\n\n" ) if $debug;
+	if ( $multi && $sock_act && ( !$data_logger || $data_logger ne $dl ) ) {
+	    switch_log( $data_logger = $dl );
+	    print( "==== $ts $tag PING ", $dl, " ====\n\n" ) if $debug;
+	}
 	return m_ping();
     }
 
     if ( $m->{type} == 0x0103 && $m->{length} > 200 ) {
 	# AHOY
+	my $dl;
 	print( "==== $ts $tag AHOY ====\n", Hexify(\$msg), "\n" ) if $debug;
-	$data_logger = substr( $m->{data}, 0, 10 );
+	$dl = substr( $m->{data}, 0, 10 );
+	if ( $multi && ( !$data_logger || $data_logger ne $dl ) ) {
+	    switch_log( $data_logger = $dl );
+	    print( "==== $ts $tag AHOY ====\n", Hexify(\$msg), "\n" ) if $debug;
+	}
 	return $identified
 	  ? m_ack( $m->{type} )
 	  : ( m_ack( $m->{type} ), m_identify() );
@@ -588,6 +599,24 @@ sub postprocess_msg {
     return;
 }
 
+sub switch_log {
+    my ( $logger ) = @_;
+
+    my $ts = ts();
+    print( "==== $ts Switching log for $logger ===\n" );
+    close(STDOUT);
+
+    my @tm = localtime(time);
+    open( STDOUT, '>>',
+	  sprintf( "%s/%04d%02d%02d-%s.log", $logdir,
+		   1900+$tm[5], 1+$tm[4], $tm[3], $logger ) );
+
+    print( ts(), " Switching Growatt ",
+	   $remote_host ? "proxy server for $remote_host" : "server",
+	   " version $my_version",
+	   " for $logger\n\n" );
+}
+
 my $prev_data;
 
 sub save_data {
@@ -606,6 +635,7 @@ sub save_data {
     my $fn = $ts;
     $fn =~ s/[- :]//g;
     $fn = $datadir . "/" . $fn;
+    $fn .= "-$data_logger" if $multi && $data_logger;
     $fn .= ".dat";
     $tag .= " DATA";
     save_msg( $msg, $fn )
@@ -681,6 +711,7 @@ sub app_options {
 		     'timeout=i' => \$timeout,
 		     'inetd|systemd' => \$sock_act,
 		     'datadir=s' => \$datadir,
+		     'multi'	=> \$multi,
 		     'logdir=s'	=> \$logdir,
 		     'ident'	=> \$ident,
 		     'verbose'	=> \$verbose,
@@ -718,6 +749,7 @@ Usage: $0 [options]
     --inetd  --systemd	Running from inetd/systemd
     --logdir=XXX	Where to put the logfiles
     --datadir=XXX	Where to put the datafiles
+    --multi		Prefix logger name to data and logs
     --help		This message
     --ident		Shows identification
     --verbose		More verbose information
